@@ -154,20 +154,25 @@ class GeneticAlgorithm:
 
         return D, C
 
-    def DIS(self, ind1, ind2, q, size):
-        new_ind = []
-        for i in range(q):
-            if ind1[i] != ind2[i]:
-                new_ind.append(ind1[i])
-            else:
-                new_ind.append(np.random.randint(0, 2))
-        for i in range(q, size):
-            if ind1[i] != ind2[i]:
-                new_ind.append(ind2[i])
-            else:
-                new_ind.append(np.random.randint(0, 2))
+    def DIS(self, ind1, ind2, q, number_of_features):
+        size = len(ind1[0])
+        new_inds = []
 
-        return new_ind
+        for feature in range(number_of_features):
+            new_ind = []
+            for i in range(q):
+                if ind1[feature][i] != ind2[feature][i]:
+                    new_ind.append(ind1[feature][i])
+                else:
+                    new_ind.append(np.random.randint(0, 2))
+            for i in range(q, size):
+                if ind1[feature][i] != ind2[feature][i]:
+                    new_ind.append(ind2[feature][i])
+                else:
+                    new_ind.append(np.random.randint(0, 2))
+            new_inds.append(np.array(new_ind))
+
+        return np.array(new_inds)
     
     def adaption_weighted_cross(self, pop):
         n = pop[0].size
@@ -286,7 +291,7 @@ class GeneticAlgorithm:
                 elif self.crossover_type == "two_point":
                     child1, child2 = self.two_point_crossover(parent1, parent2)
                 elif self.crossover_type == "three_point":
-                    child1, child2 = self.two_point_crossover(parent1, parent2)
+                    child1, child2 = self.three_point_crossover(parent1, parent2)
                 elif self.crossover_type == "uniform":
                     child1, child2 = self.uniform_crossover(parent1, parent2)
                 elif self.crossover_type == "grainy":
@@ -298,9 +303,9 @@ class GeneticAlgorithm:
                 elif self.crossover_type == "Random Respectful":
                     child1, child2 = self.RRC(parent1, parent2, len(parent1))
                 elif self.crossover_type == "DIS":
-                    q = np.random.randint(1, len(parent1)) #TODO zmienic?? nie wiem czy ma sie losowac
-                    child1 = self.DIS(parent1, parent2, q, len(parent1)) #TODO nie dziala :(
-                    child2 = self.DIS(parent1, parent2, q, len(parent1)) #TODO zmienic??
+                    q = np.random.randint(1, len(parent1[0]))
+                    child1 = self.DIS(parent1, parent2, q, len(parent1))
+                    child2 = self.DIS(parent1, parent2, q, len(parent1))
                 elif self.crossover_type == "adaption weighted":
               #TODO pomyslec jak dodac populacje / W: adaption_weighted_cross tworzy w jednym odpaleniu jednego potomka z x rodziców, więc proponuje utworzyć n potomków i zastąpić nimi najgorsze n rodziców i w ten sposób uzyskać populacje tej samej liczności po danej iteracji
               #TODO nie wiem tylko jak to ma działać dla tablic 3d, wiec WIP

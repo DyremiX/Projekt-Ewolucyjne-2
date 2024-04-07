@@ -23,6 +23,8 @@ class GeneticAlgorithm:
         self.precision = precision
         self.mutation_method = mutation_method
         self.population = self.initialize_population()
+        self.population_masks = np.random.randint(2, size=(self.population_size,self.num_variables))
+
 
     def initialize_population(self):
         num_bits = int(np.ceil(np.log2(10**self.precision)))
@@ -58,6 +60,10 @@ class GeneticAlgorithm:
     def evaluate_population(self):
         decimal_population = self.binary_to_decimal(self.population, self.precision)
         return np.array([self.objective_function(individual) for individual in decimal_population])
+
+    def evaluate_subject(self, subject):
+        decimal_subject = self.binary_to_decimal(subject, self.precision)
+        return self.objective_function(decimal_subject)
 
     def select_parents(self, fitness_values):
         if self.selection_method == "best":
@@ -274,6 +280,35 @@ class GeneticAlgorithm:
                 maxim_id = i
                 maxim = self.adap_func(pop[i])
         return maxim_id
+    
+    def find_subject(self, subject):
+        for i in range(len(self.population)):
+            if np.array_equal(self.population[i], subject):           
+                return i
+        return "Błąd, nie ma takiego osobnika"
+    
+    def update_mask(self, subject, new_mask):
+        self.population_masks[self.find_subject(subject=subject)] = new_mask
+        pass
+
+    def update_population_mask(self, parents, children):
+        self.population_masks = np.vstack((self.population_masks, np.zeros((len(children), self.num_variables))))
+        if len(parents) != len(children):
+            raise Exception(f"Błąd, niezgodna ilość dzieci i rodziców (P:{parents} != C:{children})")
+        for i in range(0, len(parents) - 1, 2):
+            parent1, parent2 = parents[i], parents[i+1]
+            child1, child2 = children[i], children[i+1]
+            paretns_score = (self.evaluate_subject(parent1) + self.evaluate_subject(parent2))/2
+            child_score = (self.evaluate_subject(child1) + self.evaluate_subject(child2))/2 
+            if child_score < paretns_score: # W przypadku słabszego wyniku potomków wybieramy nowy maski (TODO, znaleźć dobrą metode (MD))
+                self.update_mask(child1,np.random.randint(2, size=(self.num_variables)))
+                self.update_mask(child2,np.random.randint(2, size=(self.num_variables)))
+                self.update_mask(parent1,np.random.randint(2, size=(self.num_variables)))
+                self.update_mask(parent2,np.random.randint(2, size=(self.num_variables)))
+            else:
+                self.update_mask(child1,self.population_masks[self.find_subject(parent1)])
+                self.update_mask(child2,self.population_masks[self.find_subject(parent2)])
+        pass
 
     def crossover(self, parents):
         children = []
@@ -292,9 +327,7 @@ class GeneticAlgorithm:
                 elif self.crossover_type == "grainy":
                     child1, child2 = self.uniform_crossover(parent1, parent2)  
                 elif self.crossover_type == "dominance":
-                    mask_A = np.random.randint(2, len(parent1)) #TODO zmienic?? nie wiem czy ma sie losowac
-                    mask_B = np.random.randint(2, len(parent1)) #TODO zmienic?? nie wiem czy ma sie losowac
-                    child1, child2 = self.crossover_by_dominance(parent1, parent2, mask_A, mask_B) #TODO nie dziala :(
+                    child1, child2 = self.crossover_by_dominance(parent1, parent2, self.population_masks[self.find_subject(parent1)], self.population_masks[self.find_subject(parent1)]) #TODO nie dziala :( # MD: Działa :D
                 elif self.crossover_type == "Random Respectful":
                     child1, child2 = self.RRC(parent1, parent2, len(parent1))
                 elif self.crossover_type == "DIS":
@@ -403,6 +436,7 @@ class GeneticAlgorithm:
             self.population = combined_population 
             elite_population = self.elitism(self.population, fitness_values)
             self.population = elite_population
+            self.update_population_mask(parents,children)
 
         end_time = time.time()
         execution_time = end_time - start_time

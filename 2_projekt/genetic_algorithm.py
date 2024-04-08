@@ -27,8 +27,8 @@ class GeneticAlgorithm:
 
 
     def initialize_population(self):
-        num_bits = int(np.ceil(np.log2(10**self.precision)))
-        return np.random.randint(2, size=(self.population_size, self.num_variables, num_bits))
+        self.num_bits = int(np.ceil(np.log2(10*10**self.precision) + np.log2(1)))
+        return np.random.randint(2, size=(self.population_size, self.num_variables, self.num_bits))
 
     def binary_to_decimal(self, binary_population, precision):
         if binary_population.ndim == 3:  # Dla całej populacji
@@ -194,37 +194,37 @@ class GeneticAlgorithm:
         return np.array(new_inds)
     
     def adaption_weighted_cross(self, pop):
-        print("parents size inside function", pop.shape)
+        # print("parents size inside function", pop.shape)
         n = pop.shape[2]
         num_vars = pop.shape[1]
         pop_size = pop.shape[0]
-        print("\n\n")
-        print(pop[0])
-        print(pop[0][0])
+        # print("\n\n")
+        # print(pop[0])
+        # print(pop[0][0])
         alfa = random.uniform(0, 1)
-        print("Alfa: ", alfa)
+        # print("Alfa: ", alfa)
 
         parent_num = 0
         parent_tab = np.zeros((0, num_vars, n), dtype=int)
         num_rows, num_columns, num_depth = parent_tab.shape
-        print("Number of parent_tab rows:", num_rows)
-        print("Number of parent_tab columns:", num_columns)
-        print("parent_tab depth:", num_depth)
-        print("Pop.size: ", pop_size)
-        print("Var.size: ", num_vars)
-        print("n.size: ", n)
-        print("test: ", pop[0].shape)
+        # print("Number of parent_tab rows:", num_rows)
+        # print("Number of parent_tab columns:", num_columns)
+        # print("parent_tab depth:", num_depth)
+        # print("Pop.size: ", pop_size)
+        # print("Var.size: ", num_vars)
+        # print("n.size: ", n)
+        # print("test: ", pop[0].shape)
         for i in range(0, pop_size):
             beta = (self.adap_func(pop[i]) - self.min_adap_func(pop, pop_size))/(self.max_adap_func(pop, pop_size) - self.min_adap_func(pop, pop_size))
             if beta < alfa:
                 pop_i_reshaped = pop[i].reshape(1, *pop[i].shape)
                 parent_tab = np.vstack([parent_tab, pop_i_reshaped])
-                print("Parent_tab shape: ", parent_tab.shape)
+                # print("Parent_tab shape: ", parent_tab.shape)
                 parent_num = parent_num + 1
 
-        print(parent_tab)
+        # print(parent_tab)
 
-        print("parent_num: ", parent_num)
+        # print("parent_num: ", parent_num)
         W = np.zeros((1, parent_num), dtype=float)
 
         denominator = 0
@@ -234,7 +234,7 @@ class GeneticAlgorithm:
         for i in range(0, parent_num):
             W[0][i] = self.adap_func(parent_tab[i])/float(denominator)
 
-        print("W: ", W)
+        # print("W: ", W)
         tab = np.zeros((parent_num, num_vars, n), dtype=int)
         for j in range(0, parent_num):
             for v in range(0, num_vars):
@@ -244,11 +244,11 @@ class GeneticAlgorithm:
                     else:
                         tab[j][v][i] = -1
 
-        print("\nTAB:")
-        print(tab)
+        # print("\nTAB:")
+        # print(tab)
 
         f_desc = np.zeros((1, num_vars, n), dtype=int)
-        print("calculating descendant: ")
+        # print("calculating descendant: ")
         for v in range(0, num_vars):
             for i in range(0, n):
                 lambd = self.calc_sign(W, tab, v, i, parent_num)
@@ -257,7 +257,7 @@ class GeneticAlgorithm:
                 else:
                     f_desc[0][v][i] = 0
 
-        print("Descendant: ", f_desc)
+        # print("Descendant: ", f_desc)
         return f_desc
 
     def calc_sign(self, W, tab, var_num, gen_num, parent_num):
@@ -291,7 +291,7 @@ class GeneticAlgorithm:
     def max_ff_parent(self, pop):
         maxim_id = 0
         maxim = -1
-        print("len of pop: ", len(pop))
+        # print("len of pop: ", len(pop))
         for i in range(0, len(pop)):
             if self.adap_func(pop[i]) > maxim:
                 maxim_id = i
@@ -357,7 +357,7 @@ class GeneticAlgorithm:
                     # TODO pomyslec jak dodac populacje / W: adaption_weighted_cross tworzy w jednym odpaleniu jednego potomka z x rodziców, więc proponuje utworzyć n potomków i zastąpić nimi najgorsze n rodziców i w ten sposób uzyskać populacje tej samej liczności po danej iteracji (potem i tak elityzm zrobi swoje)
                     # TODO nie wiem tylko jak to ma działać dla tablic 3d, wiec WIP
                     children_fwx = np.concatenate((children_fwx, self.adaption_weighted_cross(parents)), axis=0)
-                    print("CFWX shape: ", children_fwx.shape)
+                    # print("CFWX shape: ", children_fwx.shape)
                 else:
                     child1, child2 = self.single_point_crossover(parent1, parent2)
 
@@ -370,17 +370,17 @@ class GeneticAlgorithm:
         if self.crossover_type == "adaption weighted":
             children_fwx_list = children_fwx.tolist()
             for _ in range(0, len(children_fwx_list)):
-                print("I del: ", _)
-                print("Parent size: ", parents.shape)
+                # print("I del: ", _)
+                # print("Parent size: ", parents.shape)
                 idx_to_delete = self.max_ff_parent(parents)
-                print("IDX to delete: ", idx_to_delete)
+                # print("IDX to delete: ", idx_to_delete)
                 parents = np.delete(parents, idx_to_delete, axis=0)
             parents_list = parents.tolist()
-            print("Parent list dims: ", self.get_dimensions(parents_list))
-            print("CFWX list dims: ", self.get_dimensions(children_fwx_list))
+            # print("Parent list dims: ", self.get_dimensions(parents_list))
+            # print("CFWX list dims: ", self.get_dimensions(children_fwx_list))
             parents_list.extend(children_fwx_list)
             children = parents_list
-            print("Children current size: ", len(children))
+            # print("Children current size: ", len(children))
 
         if len(parents) % 2 != 0:
             children.append(parents[-1])
@@ -406,15 +406,19 @@ class GeneticAlgorithm:
         for i in range(len(mutated_population)):
             if random.random() < self.mutation_prob:
                 mutation_point = random.randint(0, len(mutated_population[i]) - 1)
-                mutated_population[i][mutation_point] = 1 - mutated_population[i][mutation_point]
+                selected_bit = random.randint(0, self.num_bits - 1)
+                mutated_population[i][mutation_point][selected_bit] = 1 - mutated_population[i][mutation_point][selected_bit]
         return mutated_population
 
     def two_point_mutation(self, population):
         mutated_population = population.copy()
         for i in range(len(mutated_population)):
             if random.random() < self.mutation_prob:
-                mutation_points = sorted(random.sample(range(len(mutated_population[i])), 2))
-                mutated_population[i][mutation_points[0]:mutation_points[1]] = 1 - mutated_population[i][mutation_points[0]:mutation_points[1]]
+                mutation_point = random.randint(0, len(mutated_population[i]) - 1)
+                selected_bit = random.randint(0, self.num_bits - 1)
+                selected_bit2 = random.randint(0, self.num_bits - 1)
+                mutated_population[i][mutation_point][selected_bit] = 1 - mutated_population[i][mutation_point][selected_bit]
+                mutated_population[i][mutation_point][selected_bit2] = 1 - mutated_population[i][mutation_point][selected_bit2]
         return mutated_population
 
     def mutate(self, population):
@@ -426,7 +430,7 @@ class GeneticAlgorithm:
             return self.two_point_mutation(population)
         else:
             raise ValueError("Invalid mutation method specified")
-        
+
     def elitism(self, population, fitness_values):
         elite_size = int(self.population_size * self.elite_percentage)
         sorted_indices = np.argsort(fitness_values)
@@ -472,7 +476,7 @@ class GeneticAlgorithm:
             elite_population = self.elitism(self.population, fitness_values)
             self.population = elite_population
             # W: dodałem, bo mi wywalało FWX
-            if self.crossover_type != "adaption weighted":
+            if self.crossover_type == "dominance":
                 self.update_population_mask(parents,children)
 
         end_time = time.time()
@@ -481,16 +485,23 @@ class GeneticAlgorithm:
         return best_values, decimal_best_solution, average_values, std_dev_values, execution_time
 
 
+from numpy import sin
+from numpy import sqrt
 
 def keane_function(x): #TODO zmienic / W: chyba jest ok teraz
-    x_decimal = np.array(x)
-    N = len(x_decimal)
-    sum_cos4 = np.sum(np.cos(x)**4)
-    prod_cos2 = np.prod(np.cos(x)**2)
-    inner_term = np.abs(sum_cos4 - prod_cos2)
-    sum_x_squared = np.sum([x[i]**2 * (i + 1) for i in range(N)])
-    result = -inner_term * sum_x_squared**(-0.5)
-    return result
+    # x_decimal = np.array(x)
+    # N = len(x_decimal)
+    # sum_cos4 = np.sum(np.cos(x)**4)
+    # prod_cos2 = np.prod(np.cos(x)**2)
+    # inner_term = np.abs(sum_cos4 - prod_cos2)
+    # sum_x_squared = np.sum([x[i]**2 * (i + 1) for i in range(N)])
+    # result = -inner_term * sum_x_squared**(-0.5)
+    # return result
+    x1,x2 = x[0], x[1]
+    a = -sin(x1 - x2)**2 * sin(x1 + x2)**2
+    b = sqrt(x1**2 + x2**2)   
+    c = a / b
+    return c
 
 def hgbat_function(x): #TODO zmienic / W: modle sie
     x_decimal = np.array(x)
@@ -624,6 +635,7 @@ class GeneticAlgorithmGUI:
         np.savetxt("best_values.txt", self.prepend_index_to_values(best_values), fmt="%s")
         np.savetxt("average_values.txt", self.prepend_index_to_values(average_values), fmt="%s")
         np.savetxt("std_dev_values.txt", self.prepend_index_to_values(std_dev_values), fmt="%s")
+        np.savetxt("decimal_best_solution.txt", self.prepend_index_to_values(decimal_best_solution), fmt="%s")
 
         print(f"Best Values: {best_values}")
         print(f"Average Values: {average_values}")

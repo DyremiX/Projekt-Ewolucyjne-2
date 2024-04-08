@@ -110,48 +110,85 @@ class GeneticAlgorithm:
         return self.population[selected_indices]
 
     def single_point_crossover(self, parent1, parent2):
-        crossover_point = random.randint(1, self.num_variables - 1)
-        child1 = np.concatenate((parent1[:crossover_point], parent2[crossover_point:]))
-        child2 = np.concatenate((parent2[:crossover_point], parent1[crossover_point:]))
-        return child1, child2
+        children1 = []
+        children2 = []
+        for i in range(len(parent1)):
+            crossover_point = random.randint(1, len(parent1[i]) - 1)
+            child1 = np.concatenate((parent1[i][:crossover_point], parent2[i][crossover_point:]))
+            child2 = np.concatenate((parent2[i][:crossover_point], parent1[i][crossover_point:]))
+            children1.append(child1)
+            children2.append(child2)
+        return children1, children2
 
     def two_point_crossover(self, parent1, parent2):
-        crossover_points = sorted(random.sample(range(1, self.num_variables), 2))
-        child1 = np.concatenate((parent1[:crossover_points[0]], parent2[crossover_points[0]:crossover_points[1]], parent1[crossover_points[1]:]))
-        child2 = np.concatenate((parent2[:crossover_points[0]], parent1[crossover_points[0]:crossover_points[1]], parent2[crossover_points[1]:]))
-        return child1, child2
+        children1 = []
+        children2 = []
+        for i in range(len(parent1)):
+            crossover_points = sorted(random.sample(range(1, len(parent1[i])), 2))
+            child1 = np.concatenate((parent1[i][:crossover_points[0]], parent2[i][crossover_points[0]:crossover_points[1]], parent1[i][crossover_points[1]:]))
+            child2 = np.concatenate((parent2[i][:crossover_points[0]], parent1[i][crossover_points[0]:crossover_points[1]], parent2[i][crossover_points[1]:]))
+            children1.append(child1)
+            children2.append(child2)
+        return children1, children2
 
-# W: dodałem bo prosił w poleceniu
     def three_point_crossover(self, parent1, parent2):
-        crossover_points = sorted(random.sample(range(1, self.num_variables), 3))
-        child1 = np.concatenate((parent1[:crossover_points[0]],
-                                 parent2[crossover_points[0]:crossover_points[1]],
-                                 parent1[crossover_points[1]:crossover_points[2]],
-                                 parent2[crossover_points[2]:]))
-        child2 = np.concatenate((parent2[:crossover_points[0]],
-                                 parent1[crossover_points[0]:crossover_points[1]],
-                                 parent2[crossover_points[1]:crossover_points[2]],
-                                 parent1[crossover_points[2]:]))
-        return child1, child2
+        children1 = []
+        children2 = []
+        for i in range(len(parent1)):
+            crossover_points = sorted(random.sample(range(1, len(parent1[i])), 3))
+            child1 = np.concatenate((parent1[i][:crossover_points[0]],
+                                    parent2[i][crossover_points[0]:crossover_points[1]],
+                                    parent1[i][crossover_points[1]:crossover_points[2]],
+                                    parent2[i][crossover_points[2]:]))
+            child2 = np.concatenate((parent2[i][:crossover_points[0]],
+                                    parent1[i][crossover_points[0]:crossover_points[1]],
+                                    parent2[i][crossover_points[1]:crossover_points[2]],
+                                    parent1[i][crossover_points[2]:]))
+            children1.append(child1)
+            children2.append(child2)
+        return children1, children2
 
     def uniform_crossover(self, parent1, parent2):
-        mask_shape = parent1.shape
-        mask = np.random.randint(2, size=mask_shape)
-        child1 = np.where(mask, parent1, parent2)
-        child2 = np.where(mask, parent2, parent1)
-        return child1, child2
+        children1 = []
+        children2 = []
+        for i in range(len(parent1)):
+            mask_shape = parent1[i].shape
+            mask = np.random.randint(2, size=mask_shape)
+            child1 = np.where(mask, parent1[i], parent2[i])
+            child2 = np.where(mask, parent2[i], parent1[i])
+            children1.append(child1)
+            children2.append(child2)
+        return children1, children2
 
-    # W: z tego co rozumiem, to grainy_crossover tworzy 1 potomka, ale tutaj proponuje implementacje dla 2
-    def grainy_crossover(self, parent1, parent2): #TODO sprawdzic czy to git implementacja / W: zmieniłem na to co jest w książce Gwiazdy (tylko z tą zmianą ↑)
-        child1, child2 = parent1.copy(), parent2.copy()
-        for i in range(0, len(parent1), self.grain_size):
-            if random.random() <= 0.5:
-                child1[i]=parent1[i]
-                child2[i]=parent2[i]
-            else:
-                child1[i]=parent2[i]
-                child2[i]=parent1[i]
-        return child1, child2
+    def grainy_crossover(self, parent1, parent2):
+        children1 = []
+        children2 = []
+        for i in range(len(parent1)):
+            child1, child2 = parent1[i].copy(), parent2[i].copy()
+            for j in range(0, len(parent1[i]), self.grain_size):
+                if random.random() <= 0.5:
+                    child1[j] = parent1[i][j]
+                    child2[j] = parent2[i][j]
+                else:
+                    child1[j] = parent2[i][j]
+                    child2[j] = parent1[i][j]
+            children1.append(child1)
+            children2.append(child2)
+        return children1, children2
+
+    def RRC(self, A, B, n):
+        children1 = []
+        children2 = []
+        for i in range(n):
+            S = np.where(A[i] == B[i], A[i], None)
+            mask_shape = A[i].shape
+            mask = np.where(S != None, S, np.where(np.random.uniform(0, 1, size=mask_shape) <= 0.5, 1, 0))
+            C = np.where(S != None, S, mask)
+            D = np.where(S != None, S, np.where(np.random.uniform(0, 1, size=mask_shape) <= 0.5, 1, 0))
+            children1.append(D)
+            children2.append(C)
+        return children1, children2
+
 
     def crossover_by_dominance(self, parent_A, parent_B, mask_A, mask_B):
         child_C = parent_A[:]
@@ -164,14 +201,6 @@ class GeneticAlgorithm:
                 child_D[i] = parent_A[i]
     
         return child_C, child_D
-
-    def RRC(self, A, B, n):
-        S = np.where(A == B, A, None)
-
-        C = np.where(S != None, S, np.where(np.random.uniform(0, 1, size=(len(A), len(A[0]))) <= 0.5, 1, 0))
-        D = np.where(S != None, S, np.where(np.random.uniform(0, 1, size=(len(A), len(A[0]))) <= 0.5, 1, 0))
-
-        return D, C
 
     def DIS(self, ind1, ind2, q, number_of_features):
         size = len(ind1[0])

@@ -86,6 +86,19 @@ class GeneticAlgorithm:
         selected_indices = np.random.choice(range(len(fitness_values)), size=self.population_size, replace=True, p=probabilities)
         return self.population[selected_indices]
 
+# TODO: W: to jest kod ruletki preferującej niskie wartości FF. Najlepiej przegadać tą zmianę, bo może o czymś nie pomyślałem, więc zostawiam to tutaj na przyszłość
+#     def select_roulette_wheel_parents(self, fitness_values):
+#         inverted_fitness_values = 1 / fitness_values
+#         total_inverted_fitness = np.sum(inverted_fitness_values)
+#         probabilities = inverted_fitness_values / total_inverted_fitness
+#         selected_indices = np.random.choice(
+#             range(len(fitness_values)),
+#             size=self.population_size,
+#             replace=True,
+#             p=probabilities
+#         )
+#         return self.population[selected_indices]
+
 # W: natomiast select_tournament_parents zakłada, że najmniejsze wartości FF są najbardziej pożądane. Jeszcze nie wiem na ile to jest problem, że mamy taką różnicę, ale tak pisze na przyszłość. Popatrze na to jeszcze.
     def select_tournament_parents(self, fitness_values):
         selected_indices = []
@@ -181,90 +194,88 @@ class GeneticAlgorithm:
         return np.array(new_inds)
     
     def adaption_weighted_cross(self, pop):
-        n = pop[0].size
-        pop_size = pop.size
+        print("parents size inside function", pop.shape)
+        n = pop.shape[2]
+        num_vars = pop.shape[1]
+        pop_size = pop.shape[0]
         print("\n\n")
         print(pop[0])
         print(pop[0][0])
         alfa = random.uniform(0, 1)
-        print(alfa)
+        print("Alfa: ", alfa)
 
         parent_num = 0
-        parent_tab = np.zeros((0, n), dtype=int)
-        num_rows, num_columns = parent_tab.shape
+        parent_tab = np.zeros((0, num_vars, n), dtype=int)
+        num_rows, num_columns, num_depth = parent_tab.shape
         print("Number of parent_tab rows:", num_rows)
         print("Number of parent_tab columns:", num_columns)
-        for i in range(0,pop_size):
-            beta=(self.adap_func(pop[i])-self.min_adap_func(pop,pop_size))/(self.max_adap_func(pop,pop_size)-self.min_adap_func(pop,pop_size))
-            if (beta<alfa):
-                parent_tab = np.vstack([parent_tab, pop[i]])
+        print("parent_tab depth:", num_depth)
+        print("Pop.size: ", pop_size)
+        print("Var.size: ", num_vars)
+        print("n.size: ", n)
+        print("test: ", pop[0].shape)
+        for i in range(0, pop_size):
+            beta = (self.adap_func(pop[i]) - self.min_adap_func(pop, pop_size))/(self.max_adap_func(pop, pop_size) - self.min_adap_func(pop, pop_size))
+            if beta < alfa:
+                pop_i_reshaped = pop[i].reshape(1, *pop[i].shape)
+                parent_tab = np.vstack([parent_tab, pop_i_reshaped])
+                print("Parent_tab shape: ", parent_tab.shape)
                 parent_num = parent_num + 1
 
         print(parent_tab)
 
-        print("parent_num: ",parent_num)
-        W= np.zeros((1, parent_num), dtype=float)
+        print("parent_num: ", parent_num)
+        W = np.zeros((1, parent_num), dtype=float)
 
         denominator = 0
         for i in range(0, parent_num):
             denominator = denominator + self.adap_func(parent_tab[i])
 
-        for i in range(0,parent_num):
-            W[0][i]=self.adap_func(parent_tab[i])/float(denominator)
+        for i in range(0, parent_num):
+            W[0][i] = self.adap_func(parent_tab[i])/float(denominator)
 
-
-        print("W: ",W)
-        tab = np.zeros((parent_num, n), dtype=int)
-        for j in range(0,parent_num):
-            for i in range(0,n):
-                if parent_tab[j][i]==1:
-                    tab[j][i]=1
-                else:
-                    tab[j][i]=-1
+        print("W: ", W)
+        tab = np.zeros((parent_num, num_vars, n), dtype=int)
+        for j in range(0, parent_num):
+            for v in range(0, num_vars):
+                for i in range(0, n):
+                    if parent_tab[j][v][i] == 1:
+                        tab[j][v][i] = 1
+                    else:
+                        tab[j][v][i] = -1
 
         print("\nTAB:")
         print(tab)
 
-        f_desc = np.zeros((1, n), dtype=int)
+        f_desc = np.zeros((1, num_vars, n), dtype=int)
         print("calculating descendant: ")
-        for i in range(0,n):
-            lambd = self.calc_sign(W,tab,i,parent_num)
-            if lambd>=0:
-                f_desc[0][i] = 1
-            else:
-                f_desc[0][i] = 0
+        for v in range(0, num_vars):
+            for i in range(0, n):
+                lambd = self.calc_sign(W, tab, v, i, parent_num)
+                if lambd >= 0:
+                    f_desc[0][v][i] = 1
+                else:
+                    f_desc[0][v][i] = 0
 
-        print("Descendant: ",f_desc)
+        print("Descendant: ", f_desc)
         return f_desc
 
-    def gen_pop(self, pop_size,bit_length):
-        table_size = (pop_size, bit_length)
-
-        random_table = np.random.randint(2, size=table_size)
-        return np.array(random_table)
-
-    def calc_sign(self, W,t,gen_num,parent_num):
+    def calc_sign(self, W, tab, var_num, gen_num, parent_num):
         calc = 0
-        for j in range(0,parent_num):
-            calc = calc+W[0][j]*t[j][gen_num]
-        print(calc)
-        if calc>0:
+        for j in range(0, parent_num):
+            calc = calc+W[0][j]*tab[j][var_num][gen_num]
+        if calc >= 0:
             return 1
-        elif calc<0:
-            return -1
         else:
-            return 0
+            return -1
 
-    def binary_row_to_decimal(self, binary_row):
-        powers_of_2 = 2 ** np.arange(len(binary_row))[::-1]
-        return np.sum(binary_row * powers_of_2)
+    def adap_func(self, single_element):
+        #print("SES: ", single_element.shape)
+        val = self.binary_to_decimal(single_element, self.precision)
+        return self.objective_function(val)
 
-    def adap_func(self, sub):
-        val = self.binary_row_to_decimal(sub)
-        self.objective_function(val)
-
-    def min_adap_func(self, pop,pop_size):
-        minim=self.adap_func(pop[0])
+    def min_adap_func(self, pop, pop_size):
+        minim = self.adap_func(pop[0])
         for i in range(0, pop_size):
             if self.adap_func(pop[i]) < minim:
                 minim = self.adap_func(pop[i])
@@ -280,6 +291,7 @@ class GeneticAlgorithm:
     def max_ff_parent(self, pop):
         maxim_id = 0
         maxim = -1
+        print("len of pop: ", len(pop))
         for i in range(0, len(pop)):
             if self.adap_func(pop[i]) > maxim:
                 maxim_id = i
@@ -317,7 +329,9 @@ class GeneticAlgorithm:
 
     def crossover(self, parents):
         children = []
-        children_fwx = []
+        shape = (0,) + parents.shape[1:]
+        children_fwx = np.zeros(shape)
+        print("parents size:", parents.shape)
         for i in range(0, len(parents) - 1, 2):
             parent1, parent2 = parents[i], parents[i+1]
             if random.random() < self.crossover_prob:
@@ -340,9 +354,10 @@ class GeneticAlgorithm:
                     child1 = self.DIS(parent1, parent2, q, len(parent1))
                     child2 = self.DIS(parent1, parent2, q, len(parent1))
                 elif self.crossover_type == "adaption weighted":
-              #TODO pomyslec jak dodac populacje / W: adaption_weighted_cross tworzy w jednym odpaleniu jednego potomka z x rodziców, więc proponuje utworzyć n potomków i zastąpić nimi najgorsze n rodziców i w ten sposób uzyskać populacje tej samej liczności po danej iteracji
-              #TODO nie wiem tylko jak to ma działać dla tablic 3d, wiec WIP
-                    children_fwx.append(self.adaption_weighted_cross(parents))
+                    # TODO pomyslec jak dodac populacje / W: adaption_weighted_cross tworzy w jednym odpaleniu jednego potomka z x rodziców, więc proponuje utworzyć n potomków i zastąpić nimi najgorsze n rodziców i w ten sposób uzyskać populacje tej samej liczności po danej iteracji (potem i tak elityzm zrobi swoje)
+                    # TODO nie wiem tylko jak to ma działać dla tablic 3d, wiec WIP
+                    children_fwx = np.concatenate((children_fwx, self.adaption_weighted_cross(parents)), axis=0)
+                    print("CFWX shape: ", children_fwx.shape)
                 else:
                     child1, child2 = self.single_point_crossover(parent1, parent2)
 
@@ -353,15 +368,30 @@ class GeneticAlgorithm:
 
         # W: dodałem, żeby obsłużyć adaption_weighted_cross
         if self.crossover_type == "adaption weighted":
-            for _ in range(0,len(children_fwx)):
-                parents.pop(self.max_ff_parent(parents))
-            children = parents.extend(children_fwx)
+            children_fwx_list = children_fwx.tolist()
+            for _ in range(0, len(children_fwx_list)):
+                print("I del: ", _)
+                print("Parent size: ", parents.shape)
+                idx_to_delete = self.max_ff_parent(parents)
+                print("IDX to delete: ", idx_to_delete)
+                parents = np.delete(parents, idx_to_delete, axis=0)
+            parents_list = parents.tolist()
+            print("Parent list dims: ", self.get_dimensions(parents_list))
+            print("CFWX list dims: ", self.get_dimensions(children_fwx_list))
+            parents_list.extend(children_fwx_list)
+            children = parents_list
+            print("Children current size: ", len(children))
 
         if len(parents) % 2 != 0:
             children.append(parents[-1])
 
         return np.array(children)
 
+    def get_dimensions(self, lst):
+        if isinstance(lst, list):
+            return [len(lst)] + self.get_dimensions(lst[0])
+        else:
+            return []
 
     def boundary_mutation(self, population):
         mutated_population = population.copy()
@@ -441,7 +471,9 @@ class GeneticAlgorithm:
             self.population = combined_population 
             elite_population = self.elitism(self.population, fitness_values)
             self.population = elite_population
-            self.update_population_mask(parents,children)
+            # W: dodałem, bo mi wywalało FWX
+            if self.crossover_type != "adaption weighted":
+                self.update_population_mask(parents,children)
 
         end_time = time.time()
         execution_time = end_time - start_time
@@ -450,13 +482,23 @@ class GeneticAlgorithm:
 
 
 
-def keane_function(x): #TODO zmienic
+def keane_function(x): #TODO zmienic / W: chyba jest ok teraz
     x_decimal = np.array(x)
-    return np.sum(np.sin(x_decimal)**2 - np.exp(-0.1*x_decimal**2))
+    N = len(x_decimal)
+    sum_cos4 = np.sum(np.cos(x)**4)
+    prod_cos2 = np.prod(np.cos(x)**2)
+    inner_term = np.abs(sum_cos4 - prod_cos2)
+    sum_x_squared = np.sum([x[i]**2 * (i + 1) for i in range(N)])
+    result = -inner_term * sum_x_squared**(-0.5)
+    return result
 
-def hgbat_function(x): #TODO zmienic
+def hgbat_function(x): #TODO zmienic / W: modle sie
     x_decimal = np.array(x)
-    return abs(np.sum(x_decimal**2)**2-np.sum(x_decimal)**2)**(1/2)+(0.5*np.sum(x_decimal**2)-np.sum(x_decimal))/len(x_decimal)+0.5
+    D = x_decimal.shape[0]
+    first_part = np.sqrt(np.abs(np.sum(np.square(x_decimal))**2 - np.sum(x_decimal)**2))
+    second_part = (0.5*np.sum(np.square(x_decimal))+np.sum(x_decimal))/D + 0.5
+    result = first_part + second_part
+    return result
 
 class GeneticAlgorithmGUI:
     def __init__(self):

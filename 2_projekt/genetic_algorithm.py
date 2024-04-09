@@ -519,7 +519,6 @@ def tst_function(x):
     result = np.sum(np.square(x_decimal))+5
     return result
 
-#TODO: Zapytać się, czy testowane
 def hgbat_function(x):
     x_decimal = np.array(x)
     D = x_decimal.shape[0]

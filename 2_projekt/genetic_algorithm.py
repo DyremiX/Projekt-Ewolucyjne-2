@@ -79,25 +79,25 @@ class GeneticAlgorithm:
         return self.population[sorted_indices[-self.population_size:]]
 
 # W: select_roulette_wheel_parents zakłada, że największe wartości FF są najbardziej pożądane
-    def select_roulette_wheel_parents(self, fitness_values):
-        fitness_values = fitness_values - np.min(fitness_values) + 1
-        total_fitness = np.sum(fitness_values)
-        probabilities = fitness_values / total_fitness
-        selected_indices = np.random.choice(range(len(fitness_values)), size=self.population_size, replace=True, p=probabilities)
-        return self.population[selected_indices]
+#     def select_roulette_wheel_parents(self, fitness_values):
+#         fitness_values = fitness_values - np.min(fitness_values) + 1
+#         total_fitness = np.sum(fitness_values)
+#         probabilities = fitness_values / total_fitness
+#         selected_indices = np.random.choice(range(len(fitness_values)), size=self.population_size, replace=True, p=probabilities)
+#         return self.population[selected_indices]
 
 # TODO: W: to jest kod ruletki preferującej niskie wartości FF. Najlepiej przegadać tą zmianę, bo może o czymś nie pomyślałem, więc zostawiam to tutaj na przyszłość
-#     def select_roulette_wheel_parents(self, fitness_values):
-#         inverted_fitness_values = 1 / fitness_values
-#         total_inverted_fitness = np.sum(inverted_fitness_values)
-#         probabilities = inverted_fitness_values / total_inverted_fitness
-#         selected_indices = np.random.choice(
-#             range(len(fitness_values)),
-#             size=self.population_size,
-#             replace=True,
-#             p=probabilities
-#         )
-#         return self.population[selected_indices]
+    def select_roulette_wheel_parents(self, fitness_values):
+        inverted_fitness_values = 1 / fitness_values
+        total_inverted_fitness = np.sum(inverted_fitness_values)
+        probabilities = inverted_fitness_values / total_inverted_fitness
+        selected_indices = np.random.choice(
+            range(len(fitness_values)),
+            size=self.population_size,
+            replace=True,
+            p=probabilities
+        )
+        return self.population[selected_indices]
 
 # W: natomiast select_tournament_parents zakłada, że najmniejsze wartości FF są najbardziej pożądane. Jeszcze nie wiem na ile to jest problem, że mamy taką różnicę, ale tak pisze na przyszłość. Popatrze na to jeszcze.
     def select_tournament_parents(self, fitness_values):
@@ -356,12 +356,14 @@ class GeneticAlgorithm:
                 self.update_mask(child2,self.population_masks[self.find_subject(parent2)])
         pass
 
-    def crossover(self, parents):
+    def crossover(self, parents, num_elite: int):
+        missing_pop = self.population_size-num_elite
         children = []
         shape = (0,) + parents.shape[1:]
         children_fwx = np.zeros(shape)
         print("parents size:", parents.shape)
-        for i in range(0, len(parents) - 1, 2):
+        i = 0
+        while len(children) < missing_pop and children_fwx.shape[0] < missing_pop:
             parent1, parent2 = parents[i], parents[i+1]
             if random.random() < self.crossover_prob:
                 if self.crossover_type == "single_point":
@@ -394,7 +396,10 @@ class GeneticAlgorithm:
                     children.extend([child1, child2])
             else:
                 children.extend([parent1, parent2])
-
+            if(i+2)<(len(parents) - 1):
+                i=i+2
+            else:
+                i=0
         # W: dodałem, żeby obsłużyć adaption_weighted_cross
         if self.crossover_type == "adaption weighted":
             children_fwx_list = children_fwx.tolist()
@@ -467,14 +472,13 @@ class GeneticAlgorithm:
 
         elite_population = sorted_population[:elite_size]
 
-        num_missing_elite = self.population_size - elite_size
-        if num_missing_elite > 0:
-            random_population_indices = np.random.choice(len(population), num_missing_elite, replace=False)
-            random_population = population[random_population_indices]
-            elite_population = np.vstack((elite_population, random_population))
+        # num_missing_elite = self.population_size - elite_size
+        # if num_missing_elite > 0:
+        #     random_population_indices = np.random.choice(len(population), num_missing_elite, replace=False)
+        #     random_population = population[random_population_indices]
+        #     elite_population = np.vstack((elite_population, random_population))
 
         return elite_population
-
 
     def evolve(self):
         best_values = []
@@ -497,13 +501,16 @@ class GeneticAlgorithm:
             decimal_best_solution = self.binary_to_decimal(best_solution, self.precision)
             print(f"Epoch {epoch}: Best Value = {best_values[-1]}, Solution = {decimal_best_solution}")
 
-            parents = self.select_parents(fitness_values)
-            children = self.crossover(parents)
-            mutated_children = self.mutate(children)
-            combined_population = np.vstack((self.population, mutated_children))
-            self.population = combined_population 
             elite_population = self.elitism(self.population, fitness_values)
-            self.population = elite_population
+
+            parents = self.select_parents(fitness_values)
+            children = self.crossover(parents, elite_population.shape[0])
+            mutated_children = self.mutate(children)
+
+            new_population = np.vstack((elite_population, mutated_children))
+            self.population = new_population
+            #elite_population = self.elitism(self.population, fitness_values)
+            #self.population = elite_population
             # W: dodałem, bo mi wywalało FWX
             if self.crossover_type == "dominance":
                 self.update_population_mask(parents,children)

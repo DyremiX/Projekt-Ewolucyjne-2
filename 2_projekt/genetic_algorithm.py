@@ -199,7 +199,7 @@ class GeneticAlgorithm:
                 child_C[i] = parent_B[i]
             if mask_B[i] == 0 and mask_A[i] == 1:  # dominacja A z uwagi na maskę
                 child_D[i] = parent_A[i]
-    
+        self.update_population_mask(parents=[parent_A,parent_B],children=[child_C,child_D])
         return child_C, child_D
 
     def DIS(self, ind1, ind2, q, number_of_features):
@@ -346,7 +346,7 @@ class GeneticAlgorithm:
             child1, child2 = children[i], children[i+1]
             paretns_score = (self.evaluate_subject(parent1) + self.evaluate_subject(parent2))/2
             child_score = (self.evaluate_subject(child1) + self.evaluate_subject(child2))/2 
-            if child_score < paretns_score: # W przypadku słabszego wyniku potomków wybieramy nowy maski (TODO, znaleźć dobrą metode (MD))
+            if child_score > paretns_score: # W przypadku słabszego wyniku potomków wybieramy nowy maski (TODO, znaleźć dobrą metode (MD))
                 self.update_mask(child1,np.random.randint(2, size=(self.num_variables)))
                 self.update_mask(child2,np.random.randint(2, size=(self.num_variables)))
                 self.update_mask(parent1,np.random.randint(2, size=(self.num_variables)))
@@ -361,7 +361,7 @@ class GeneticAlgorithm:
         children = []
         shape = (0,) + parents.shape[1:]
         children_fwx = np.zeros(shape)
-        print("parents size:", parents.shape)
+        # print("parents size:", parents.shape)
         i = 0
         while len(children) < missing_pop and children_fwx.shape[0] < missing_pop:
             parent1, parent2 = parents[i], parents[i+1]
@@ -479,6 +479,17 @@ class GeneticAlgorithm:
         #     elite_population = np.vstack((elite_population, random_population))
 
         return elite_population
+    
+    def inversion(self, population):
+        inversed_population = population.copy()
+        for i in range(len(inversed_population)):
+            if random.random() < self.mutation_prob:
+                mutation_point = random.randint(0, len(inversed_population[i]) - 1)
+                selected_bit = random.randint(0, self.num_bits - 1)
+                selected_bit2 = random.randint(selected_bit, self.num_bits - 1)
+                inversed_population[i][mutation_point][selected_bit:selected_bit2+1] = np.flip(inversed_population[i][mutation_point][selected_bit:selected_bit2+1])
+        return inversed_population
+
 
     def evolve(self):
         best_values = []
@@ -506,14 +517,16 @@ class GeneticAlgorithm:
             parents = self.select_parents(fitness_values)
             children = self.crossover(parents, elite_population.shape[0])
             mutated_children = self.mutate(children)
+            inversed_population = self.inversion(mutated_children)
 
-            new_population = np.vstack((elite_population, mutated_children))
+            new_population = np.vstack((elite_population, inversed_population))
             self.population = new_population
             #elite_population = self.elitism(self.population, fitness_values)
             #self.population = elite_population
             # W: dodałem, bo mi wywalało FWX
-            if self.crossover_type == "dominance":
-                self.update_population_mask(parents,children)
+            # if self.crossover_type == "dominance":
+            #     print(f'Parents: {len(parents)}, Children: {len(children)}')
+            #     self.update_population_mask(parents,children)
 
         end_time = time.time()
         execution_time = end_time - start_time
@@ -588,7 +601,7 @@ class GeneticAlgorithmGUI:
         entry4 = tk.Entry(self.root, textvariable=self.crossover_prob_var, width=50, bg='dark gray')
         entry4.pack()
 
-        label5 = tk.Label(self.root, text="Mutation Probability:")
+        label5 = tk.Label(self.root, text="Mutation/Inversion Probability:")
         label5.pack()
         entry5 = tk.Entry(self.root, textvariable=self.mutation_prob_var, width=50, bg='dark gray')
         entry5.pack()

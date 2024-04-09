@@ -514,6 +514,11 @@ def keane_function(x):
     c = a / b
     return c
 
+def tst_function(x):
+    x_decimal = np.array(x)
+    result = np.sum(np.square(x_decimal))+5
+    return result
+
 #TODO: Zapytać się, czy testowane
 def hgbat_function(x):
     x_decimal = np.array(x)
@@ -601,7 +606,7 @@ class GeneticAlgorithmGUI:
         label11 = tk.Label(self.root, text="Objective function:")
         label11.pack()
         dropdown4 = ttk.Combobox(self.root, textvariable=self.objective_function_var,
-                                 values=["keane_function", "hgbat_function"], width=47)
+                                 values=["keane_function", "hgbat_function", "test"], width=47)
         dropdown4.pack()
 
         tk.Label(self.root, text="").pack()
@@ -624,6 +629,8 @@ class GeneticAlgorithmGUI:
             objective_function = hgbat_function
         elif(objective_function_var == "keane_function"):
             objective_function = keane_function
+        elif (objective_function_var == "test"):
+            objective_function = tst_function
         num_variables = self.num_variables_var.get()
         population_size = self.population_size_var.get()
         num_epochs = self.num_epochs_var.get()

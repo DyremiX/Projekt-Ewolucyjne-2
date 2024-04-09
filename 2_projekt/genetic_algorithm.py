@@ -6,6 +6,7 @@ import tkinter as tk
 from tkinter import ttk
 
 class GeneticAlgorithm:
+    # TODO: zapytać sie czemu num_selected jest hard coded
     def __init__(self, objective_function, num_variables, population_size=100, num_epochs=100, 
                  crossover_prob=0.8, mutation_prob=0.1, elite_percentage=0.6, num_selected=2, selection_method="tournament", crossover_type="single_point", grain_size=2, precision=2,
                  mutation_method="single point"):
@@ -73,20 +74,15 @@ class GeneticAlgorithm:
         elif self.selection_method == "tournament":
             return self.select_tournament_parents(fitness_values)
 
-#W: select_best_parents jedynie sortuje oryginalną populacje, natomiast pozostałe select'y zmnieniają ją już na tym etapie
+# TODO: IMO jest git, ale omówić/zapytać
+# W: i tak jest to chyba obsłużone potem przez Elityzm
+# W: select_best_parents jedynie sortuje oryginalną populacje, natomiast pozostałe select'y zmnieniają ją już na tym etapie
     def select_best_parents(self, fitness_values):
         sorted_indices = np.argsort(fitness_values)
         return self.population[sorted_indices[-self.population_size:]]
 
-# W: select_roulette_wheel_parents zakłada, że największe wartości FF są najbardziej pożądane
-#     def select_roulette_wheel_parents(self, fitness_values):
-#         fitness_values = fitness_values - np.min(fitness_values) + 1
-#         total_fitness = np.sum(fitness_values)
-#         probabilities = fitness_values / total_fitness
-#         selected_indices = np.random.choice(range(len(fitness_values)), size=self.population_size, replace=True, p=probabilities)
-#         return self.population[selected_indices]
-
-# TODO: W: to jest kod ruletki preferującej niskie wartości FF. Najlepiej przegadać tą zmianę, bo może o czymś nie pomyślałem, więc zostawiam to tutaj na przyszłość
+# TODO: Upewnić się, że zostawiamy, poza tym jest git
+# W: to jest kod ruletki preferującej niskie wartości FF. Najlepiej przegadać tą zmianę, bo może o czymś nie pomyślałem, więc zostawiam to tutaj na przyszłość
     def select_roulette_wheel_parents(self, fitness_values):
         inverted_fitness_values = 1 / fitness_values
         total_inverted_fitness = np.sum(inverted_fitness_values)
@@ -99,14 +95,32 @@ class GeneticAlgorithm:
         )
         return self.population[selected_indices]
 
-# W: natomiast select_tournament_parents zakłada, że najmniejsze wartości FF są najbardziej pożądane. Jeszcze nie wiem na ile to jest problem, że mamy taką różnicę, ale tak pisze na przyszłość. Popatrze na to jeszcze.
+
     def select_tournament_parents(self, fitness_values):
         selected_indices = []
+        #TODO: niby nie jest powiedziane ilu osobników mamy w ten sposób uzyskać. Wybrać implementacje
         for _ in range(self.population_size):
             tournament_indices = np.random.choice(len(fitness_values), size=self.num_selected, replace=False)
             tournament_fitness = fitness_values[tournament_indices]
             winner_index = tournament_indices[np.argmin(tournament_fitness)]
             selected_indices.append(winner_index)
+        return self.population[selected_indices]
+
+    # W: Inna propozycja implementacji
+    def select_tournament_parents_but_different(self, fitness_values):
+        selected_indices = []
+        pool_indices = np.arange(len(fitness_values))
+        np.random.shuffle(pool_indices)
+        tournament_indices = np.empty((int(self.population_size/self.num_selected), self.num_selected), dtype=int)
+        tournament_fitness = np.empty((int(self.population_size / self.num_selected), self.num_selected), dtype=int)
+        for i in range(int(self.population_size/self.num_selected)):
+            tournament_indices[i] = pool_indices[i*self.num_selected:(i+1)*self.num_selected]
+            tournament_fitness[i] = fitness_values[tournament_indices[i]]
+
+        for i in range(self.population_size):
+            winner_index = tournament_indices[i][np.argmin(tournament_fitness[i])]
+            selected_indices.append(winner_index)
+
         return self.population[selected_indices]
 
     def single_point_crossover(self, parent1, parent2):
@@ -223,37 +237,20 @@ class GeneticAlgorithm:
         return np.array(new_inds)
     
     def adaption_weighted_cross(self, pop):
-        # print("parents size inside function", pop.shape)
         n = pop.shape[2]
         num_vars = pop.shape[1]
         pop_size = pop.shape[0]
-        # print("\n\n")
-        # print(pop[0])
-        # print(pop[0][0])
         alfa = random.uniform(0, 1)
-        # print("Alfa: ", alfa)
 
         parent_num = 0
         parent_tab = np.zeros((0, num_vars, n), dtype=int)
-        num_rows, num_columns, num_depth = parent_tab.shape
-        # print("Number of parent_tab rows:", num_rows)
-        # print("Number of parent_tab columns:", num_columns)
-        # print("parent_tab depth:", num_depth)
-        # print("Pop.size: ", pop_size)
-        # print("Var.size: ", num_vars)
-        # print("n.size: ", n)
-        # print("test: ", pop[0].shape)
         for i in range(0, pop_size):
             beta = (self.adap_func(pop[i]) - self.min_adap_func(pop, pop_size))/(self.max_adap_func(pop, pop_size) - self.min_adap_func(pop, pop_size))
             if beta < alfa:
                 pop_i_reshaped = pop[i].reshape(1, *pop[i].shape)
                 parent_tab = np.vstack([parent_tab, pop_i_reshaped])
-                # print("Parent_tab shape: ", parent_tab.shape)
                 parent_num = parent_num + 1
 
-        # print(parent_tab)
-
-        # print("parent_num: ", parent_num)
         W = np.zeros((1, parent_num), dtype=float)
 
         denominator = 0
@@ -263,7 +260,6 @@ class GeneticAlgorithm:
         for i in range(0, parent_num):
             W[0][i] = self.adap_func(parent_tab[i])/float(denominator)
 
-        # print("W: ", W)
         tab = np.zeros((parent_num, num_vars, n), dtype=int)
         for j in range(0, parent_num):
             for v in range(0, num_vars):
@@ -273,11 +269,7 @@ class GeneticAlgorithm:
                     else:
                         tab[j][v][i] = -1
 
-        # print("\nTAB:")
-        # print(tab)
-
         f_desc = np.zeros((1, num_vars, n), dtype=int)
-        # print("calculating descendant: ")
         for v in range(0, num_vars):
             for i in range(0, n):
                 lambd = self.calc_sign(W, tab, v, i, parent_num)
@@ -286,7 +278,6 @@ class GeneticAlgorithm:
                 else:
                     f_desc[0][v][i] = 0
 
-        # print("Descendant: ", f_desc)
         return f_desc
 
     def calc_sign(self, W, tab, var_num, gen_num, parent_num):
@@ -361,7 +352,6 @@ class GeneticAlgorithm:
         children = []
         shape = (0,) + parents.shape[1:]
         children_fwx = np.zeros(shape)
-        # print("parents size:", parents.shape)
         i = 0
         while len(children) < missing_pop and children_fwx.shape[0] < missing_pop:
             parent1, parent2 = parents[i], parents[i+1]
@@ -385,10 +375,7 @@ class GeneticAlgorithm:
                     child1 = self.DIS(parent1, parent2, q, len(parent1))
                     child2 = self.DIS(parent1, parent2, q, len(parent1))
                 elif self.crossover_type == "adaption weighted":
-                    # TODO pomyslec jak dodac populacje / W: adaption_weighted_cross tworzy w jednym odpaleniu jednego potomka z x rodziców, więc proponuje utworzyć n potomków i zastąpić nimi najgorsze n rodziców i w ten sposób uzyskać populacje tej samej liczności po danej iteracji (potem i tak elityzm zrobi swoje)
-                    # TODO nie wiem tylko jak to ma działać dla tablic 3d, wiec WIP
                     children_fwx = np.concatenate((children_fwx, self.adaption_weighted_cross(parents)), axis=0)
-                    # print("CFWX shape: ", children_fwx.shape)
                 else:
                     child1, child2 = self.single_point_crossover(parent1, parent2)
 
@@ -396,25 +383,19 @@ class GeneticAlgorithm:
                     children.extend([child1, child2])
             else:
                 children.extend([parent1, parent2])
-            if(i+2)<(len(parents) - 1):
-                i=i+2
+            if (i+3) < (len(parents) - 1):
+                i = i+2
             else:
-                i=0
-        # W: dodałem, żeby obsłużyć adaption_weighted_cross
+                i = 0
+
         if self.crossover_type == "adaption weighted":
             children_fwx_list = children_fwx.tolist()
             for _ in range(0, len(children_fwx_list)):
-                # print("I del: ", _)
-                # print("Parent size: ", parents.shape)
                 idx_to_delete = self.max_ff_parent(parents)
-                # print("IDX to delete: ", idx_to_delete)
                 parents = np.delete(parents, idx_to_delete, axis=0)
             parents_list = parents.tolist()
-            # print("Parent list dims: ", self.get_dimensions(parents_list))
-            # print("CFWX list dims: ", self.get_dimensions(children_fwx_list))
             parents_list.extend(children_fwx_list)
             children = parents_list
-            # print("Children current size: ", len(children))
 
         if len(parents) % 2 != 0:
             children.append(parents[-1])
@@ -432,7 +413,7 @@ class GeneticAlgorithm:
         for i in range(len(mutated_population)):
             for j in range(len(mutated_population[i])):
                 if random.random() < self.mutation_prob:
-                    mutated_population[i][j] = random.randint(0, 1)
+                    mutated_population[i][j][len(mutated_population[i][j])-1] = 1 - mutated_population[i][j][len(mutated_population[i][j])-1]
         return mutated_population
 
     def single_point_mutation(self, population):
@@ -472,6 +453,7 @@ class GeneticAlgorithm:
 
         elite_population = sorted_population[:elite_size]
 
+# TODO: zapytać o to o 18:00
         # num_missing_elite = self.population_size - elite_size
         # if num_missing_elite > 0:
         #     random_population_indices = np.random.choice(len(population), num_missing_elite, replace=False)
@@ -479,7 +461,8 @@ class GeneticAlgorithm:
         #     elite_population = np.vstack((elite_population, random_population))
 
         return elite_population
-    
+
+    # TODO: Dodać Inwersje jako element evolve i dodać jako opcję do widgeta
     def inversion(self, population):
         inversed_population = population.copy()
         for i in range(len(inversed_population)):
@@ -521,6 +504,8 @@ class GeneticAlgorithm:
 
             new_population = np.vstack((elite_population, inversed_population))
             self.population = new_population
+
+            #TODO: wytłumaczyć zmianę
             #elite_population = self.elitism(self.population, fitness_values)
             #self.population = elite_population
             # W: dodałem, bo mi wywalało FWX
@@ -537,7 +522,8 @@ class GeneticAlgorithm:
 from numpy import sin
 from numpy import sqrt
 
-def keane_function(x): #TODO zmienic / W: chyba jest ok teraz
+#TODO: Zmienić to, żeby obsługiwało wiele zmiennych
+def keane_function(x):
     # x_decimal = np.array(x)
     # N = len(x_decimal)
     # sum_cos4 = np.sum(np.cos(x)**4)
@@ -552,7 +538,8 @@ def keane_function(x): #TODO zmienic / W: chyba jest ok teraz
     c = a / b
     return c
 
-def hgbat_function(x): #TODO zmienic / W: modle sie
+#TODO: Zapytać się, czy testowane
+def hgbat_function(x):
     x_decimal = np.array(x)
     D = x_decimal.shape[0]
     first_part = np.sqrt(np.abs(np.sum(np.square(x_decimal))**2 - np.sum(x_decimal)**2))
@@ -672,15 +659,14 @@ class GeneticAlgorithmGUI:
         precision = self.precision_var.get()
         mutate = self.mutate_type_var.get()
 
-        num_selected = int(population_size * elite_percentage)
+        num_selected_as_elite = int(population_size * elite_percentage)
 
         ga = GeneticAlgorithm(objective_function, num_variables, population_size, num_epochs, 
-                          crossover_prob, mutation_prob, elite_percentage, num_selected, selection_method, crossover_type=crossover_type, precision=precision, mutation_method=mutate)
+                          crossover_prob, mutation_prob, elite_percentage, num_selected_as_elite, selection_method, crossover_type=crossover_type, precision=precision, mutation_method=mutate)
     
         
         best_values, decimal_best_solution, average_values, std_dev_values, execution_time = ga.evolve()
 
-        # W: Dodałem zapis do pliku
         np.savetxt("best_values.txt", self.prepend_index_to_values(best_values), fmt="%s")
         np.savetxt("average_values.txt", self.prepend_index_to_values(average_values), fmt="%s")
         np.savetxt("std_dev_values.txt", self.prepend_index_to_values(std_dev_values), fmt="%s")
@@ -698,9 +684,9 @@ class GeneticAlgorithmGUI:
         self.best_solution_text.delete('1.0', tk.END)
         self.best_solution_text.insert(tk.END, best_solution_text)
 
-        self.display_time(execution_time) #TODO czemu wyswietla sie po zamknieciu wykresow? / W: u mnie pojawia się wraz z wynikami
+        self.display_time(execution_time) #TODO: czemu wyswietla sie po zamknieciu wykresow? / W: u mnie pojawia się wraz z wynikami
         self.plot_graphs(best_values, average_values, std_dev_values)
-        #TODO czemu okienko sie zmienjsza po kliknieciu run? / W: już nie (po dodaniu self.root.geometry("340x660")), albo u mnie już nie ¯\_(ツ)_/¯
+        #TODO: czemu okienko sie zmienjsza po kliknieciu run? / W: już nie (po dodaniu self.root.geometry("340x660")), albo u mnie już nie ¯\_(ツ)_/¯
 
     def prepend_index_to_values(self, arr):
         modified_arr = np.empty_like(arr, dtype=object)

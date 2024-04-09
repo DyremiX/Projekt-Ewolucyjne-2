@@ -6,9 +6,8 @@ import tkinter as tk
 from tkinter import ttk
 
 class GeneticAlgorithm:
-    # TODO: zapytać sie czemu num_selected jest hard coded
     def __init__(self, objective_function, num_variables, population_size=100, num_epochs=100, 
-                 crossover_prob=0.8, mutation_prob=0.1, elite_percentage=0.6, num_selected=2, selection_method="tournament", crossover_type="single_point", grain_size=2, precision=2,
+                 crossover_prob=0.8, mutation_prob=0.1, elite_percentage=0.6, num_selected=4, selection_method="tournament", crossover_type="single_point", grain_size=2, precision=2,
                  mutation_method="single point"):
         self.objective_function = objective_function
         self.num_variables = num_variables
@@ -74,15 +73,10 @@ class GeneticAlgorithm:
         elif self.selection_method == "tournament":
             return self.select_tournament_parents(fitness_values)
 
-# TODO: IMO jest git, ale omówić/zapytać
-# W: i tak jest to chyba obsłużone potem przez Elityzm
-# W: select_best_parents jedynie sortuje oryginalną populacje, natomiast pozostałe select'y zmnieniają ją już na tym etapie
     def select_best_parents(self, fitness_values):
         sorted_indices = np.argsort(fitness_values)
         return self.population[sorted_indices[-self.population_size:]]
 
-# TODO: Upewnić się, że zostawiamy, poza tym jest git
-# W: to jest kod ruletki preferującej niskie wartości FF. Najlepiej przegadać tą zmianę, bo może o czymś nie pomyślałem, więc zostawiam to tutaj na przyszłość
     def select_roulette_wheel_parents(self, fitness_values):
         inverted_fitness_values = 1 / fitness_values
         total_inverted_fitness = np.sum(inverted_fitness_values)
@@ -98,7 +92,6 @@ class GeneticAlgorithm:
 
     def select_tournament_parents(self, fitness_values):
         selected_indices = []
-        #TODO: niby nie jest powiedziane ilu osobników mamy w ten sposób uzyskać. Wybrać implementacje
         for _ in range(self.population_size):
             tournament_indices = np.random.choice(len(fitness_values), size=self.num_selected, replace=False)
             tournament_fitness = fitness_values[tournament_indices]
@@ -107,21 +100,21 @@ class GeneticAlgorithm:
         return self.population[selected_indices]
 
     # W: Inna propozycja implementacji
-    def select_tournament_parents_but_different(self, fitness_values):
-        selected_indices = []
-        pool_indices = np.arange(len(fitness_values))
-        np.random.shuffle(pool_indices)
-        tournament_indices = np.empty((int(self.population_size/self.num_selected), self.num_selected), dtype=int)
-        tournament_fitness = np.empty((int(self.population_size / self.num_selected), self.num_selected), dtype=int)
-        for i in range(int(self.population_size/self.num_selected)):
-            tournament_indices[i] = pool_indices[i*self.num_selected:(i+1)*self.num_selected]
-            tournament_fitness[i] = fitness_values[tournament_indices[i]]
-
-        for i in range(self.population_size):
-            winner_index = tournament_indices[i][np.argmin(tournament_fitness[i])]
-            selected_indices.append(winner_index)
-
-        return self.population[selected_indices]
+    # def select_tournament_parents(self, fitness_values):
+    #     selected_indices = []
+    #     pool_indices = np.arange(len(fitness_values))
+    #     np.random.shuffle(pool_indices)
+    #     tournament_indices = np.empty((int(self.population_size/self.num_selected), self.num_selected), dtype=int)
+    #     tournament_fitness = np.empty((int(self.population_size / self.num_selected), self.num_selected), dtype=int)
+    #     for i in range(int(self.population_size/self.num_selected)):
+    #         tournament_indices[i] = pool_indices[i*self.num_selected:(i+1)*self.num_selected]
+    #         tournament_fitness[i] = fitness_values[tournament_indices[i]]
+    #
+    #     for i in range(self.population_size):
+    #         winner_index = tournament_indices[i][np.argmin(tournament_fitness[i])]
+    #         selected_indices.append(winner_index)
+    #
+    #     return self.population[selected_indices]
 
     def single_point_crossover(self, parent1, parent2):
         children1 = []
@@ -337,7 +330,7 @@ class GeneticAlgorithm:
             child1, child2 = children[i], children[i+1]
             paretns_score = (self.evaluate_subject(parent1) + self.evaluate_subject(parent2))/2
             child_score = (self.evaluate_subject(child1) + self.evaluate_subject(child2))/2 
-            if child_score > paretns_score: # W przypadku słabszego wyniku potomków wybieramy nowy maski (TODO, znaleźć dobrą metode (MD))
+            if child_score > paretns_score: # W przypadku słabszego wyniku potomków wybieramy nowy maski
                 self.update_mask(child1,np.random.randint(2, size=(self.num_variables)))
                 self.update_mask(child2,np.random.randint(2, size=(self.num_variables)))
                 self.update_mask(parent1,np.random.randint(2, size=(self.num_variables)))
@@ -367,7 +360,7 @@ class GeneticAlgorithm:
                 elif self.crossover_type == "grainy":
                     child1, child2 = self.uniform_crossover(parent1, parent2)  
                 elif self.crossover_type == "dominance":
-                    child1, child2 = self.crossover_by_dominance(parent1, parent2, self.population_masks[self.find_subject(parent1)], self.population_masks[self.find_subject(parent1)]) #TODO nie dziala :( # MD: Działa :D
+                    child1, child2 = self.crossover_by_dominance(parent1, parent2, self.population_masks[self.find_subject(parent1)], self.population_masks[self.find_subject(parent1)])
                 elif self.crossover_type == "Random Respectful":
                     child1, child2 = self.RRC(parent1, parent2, len(parent1))
                 elif self.crossover_type == "DIS":
@@ -453,16 +446,8 @@ class GeneticAlgorithm:
 
         elite_population = sorted_population[:elite_size]
 
-# TODO: zapytać o to o 18:00
-        # num_missing_elite = self.population_size - elite_size
-        # if num_missing_elite > 0:
-        #     random_population_indices = np.random.choice(len(population), num_missing_elite, replace=False)
-        #     random_population = population[random_population_indices]
-        #     elite_population = np.vstack((elite_population, random_population))
-
         return elite_population
 
-    # TODO: Dodać Inwersje jako element evolve i dodać jako opcję do widgeta
     def inversion(self, population):
         inversed_population = population.copy()
         for i in range(len(inversed_population)):
@@ -505,14 +490,6 @@ class GeneticAlgorithm:
             new_population = np.vstack((elite_population, inversed_population))
             self.population = new_population
 
-            #TODO: wytłumaczyć zmianę
-            #elite_population = self.elitism(self.population, fitness_values)
-            #self.population = elite_population
-            # W: dodałem, bo mi wywalało FWX
-            # if self.crossover_type == "dominance":
-            #     print(f'Parents: {len(parents)}, Children: {len(children)}')
-            #     self.update_population_mask(parents,children)
-
         end_time = time.time()
         execution_time = end_time - start_time
 
@@ -522,7 +499,6 @@ class GeneticAlgorithm:
 from numpy import sin
 from numpy import sqrt
 
-#TODO: Zmienić to, żeby obsługiwało wiele zmiennych
 def keane_function(x):
     # x_decimal = np.array(x)
     # N = len(x_decimal)
@@ -684,9 +660,8 @@ class GeneticAlgorithmGUI:
         self.best_solution_text.delete('1.0', tk.END)
         self.best_solution_text.insert(tk.END, best_solution_text)
 
-        self.display_time(execution_time) #TODO: czemu wyswietla sie po zamknieciu wykresow? / W: u mnie pojawia się wraz z wynikami
+        self.display_time(execution_time)
         self.plot_graphs(best_values, average_values, std_dev_values)
-        #TODO: czemu okienko sie zmienjsza po kliknieciu run? / W: już nie (po dodaniu self.root.geometry("340x660")), albo u mnie już nie ¯\_(ツ)_/¯
 
     def prepend_index_to_values(self, arr):
         modified_arr = np.empty_like(arr, dtype=object)

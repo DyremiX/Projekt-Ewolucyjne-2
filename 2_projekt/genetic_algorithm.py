@@ -4,11 +4,15 @@ import time
 import matplotlib.pyplot as plt
 import tkinter as tk
 from tkinter import ttk
+import benchmark_functions as bf
+import opfunu as opf
 
 class GeneticAlgorithm:
-    def __init__(self, objective_function, num_variables, population_size=100, num_epochs=100, 
+    def __init__(self, min_ss, max_ss, objective_function, num_variables, population_size=100, num_epochs=100,
                  crossover_prob=0.8, mutation_prob=0.1, elite_percentage=0.6, num_selected=4, selection_method="tournament", crossover_type="single_point", grain_size=2, precision=2,
                  mutation_method="single point"):
+        self.max_ss = max_ss
+        self.min_ss = min_ss
         self.objective_function = objective_function
         self.num_variables = num_variables
         self.population_size = population_size
@@ -27,7 +31,7 @@ class GeneticAlgorithm:
 
 
     def initialize_population(self):
-        self.num_bits = int(np.ceil(np.log2(10*10**self.precision) + np.log2(1)))
+        self.num_bits = int(np.ceil(np.log2((self.max_ss-self.min_ss)*10**self.precision) + np.log2(1)))
         return np.random.randint(2, size=(self.population_size, self.num_variables, self.num_bits))
 
     def binary_to_decimal(self, binary_population, precision):
@@ -40,7 +44,7 @@ class GeneticAlgorithm:
                     decimal_value = 0
                     for j in range(num_bits):
                         decimal_value += binary_population[i][v][j] * (2 ** (num_bits - j - 1))
-                    decimal_population[i][v] = decimal_value / (10 ** precision)
+                    decimal_population[i][v] = self.min_ss + decimal_value  / (10 ** precision) #TODO: Nie jest zgodne z wzorem, ale działa (prawie) idealnie
         elif binary_population.ndim == 2:  # Dla pojedynczego najlepszego rozwiązania
             num_variables, num_bits = binary_population.shape
             decimal_solution = np.zeros(num_variables)
@@ -49,7 +53,7 @@ class GeneticAlgorithm:
                 decimal_value = 0
                 for j in range(num_bits):
                     decimal_value += binary_population[v][j] * (2 ** (num_bits - j - 1))
-                decimal_solution[v] = decimal_value / (10 ** precision)
+                decimal_solution[v] = self.min_ss + decimal_value  / (10 ** precision)#TODO: Nie jest zgodne z wzorem, ale działa (prawie) idealnie
 
             decimal_population = decimal_solution
         else:
@@ -98,23 +102,6 @@ class GeneticAlgorithm:
             winner_index = tournament_indices[np.argmin(tournament_fitness)]
             selected_indices.append(winner_index)
         return self.population[selected_indices]
-
-    # W: Inna propozycja implementacji
-    # def select_tournament_parents(self, fitness_values):
-    #     selected_indices = []
-    #     pool_indices = np.arange(len(fitness_values))
-    #     np.random.shuffle(pool_indices)
-    #     tournament_indices = np.empty((int(self.population_size/self.num_selected), self.num_selected), dtype=int)
-    #     tournament_fitness = np.empty((int(self.population_size / self.num_selected), self.num_selected), dtype=int)
-    #     for i in range(int(self.population_size/self.num_selected)):
-    #         tournament_indices[i] = pool_indices[i*self.num_selected:(i+1)*self.num_selected]
-    #         tournament_fitness[i] = fitness_values[tournament_indices[i]]
-    #
-    #     for i in range(self.population_size):
-    #         winner_index = tournament_indices[i][np.argmin(tournament_fitness[i])]
-    #         selected_indices.append(winner_index)
-    #
-    #     return self.population[selected_indices]
 
     def single_point_crossover(self, parent1, parent2):
         children1 = []
@@ -508,7 +495,7 @@ def keane_function(x):
     # sum_x_squared = np.sum([x[i]**2 * (i + 1) for i in range(N)])
     # result = -inner_term * sum_x_squared**(-0.5)
     # return result
-    x1,x2 = x[0], x[1]
+    x1, x2 = x[0], x[1]
     a = -sin(x1 - x2)**2 * sin(x1 + x2)**2
     b = sqrt(x1**2 + x2**2)   
     c = a / b
@@ -534,6 +521,8 @@ class GeneticAlgorithmGUI:
         self.root.geometry("600x650")
 
         self.num_variables_var = tk.IntVar(value=5)
+        self.max_ss_var = tk.DoubleVar(value=10.0)
+        self.min_ss_var = tk.DoubleVar(value=0.0)
         self.population_size_var = tk.IntVar(value=100)
         self.num_epochs_var = tk.IntVar(value=100)
         self.crossover_prob_var = tk.DoubleVar(value=0.8)
@@ -552,6 +541,16 @@ class GeneticAlgorithmGUI:
         label1.pack()
         entry1 = tk.Entry(self.root, textvariable=self.num_variables_var, width=50, bg='dark gray')
         entry1.pack()
+
+        label1a = tk.Label(self.root, text="Min Search Size:")
+        label1a.pack()
+        entry1a = tk.Entry(self.root, textvariable=self.min_ss_var, width=50, bg='dark gray')
+        entry1a.pack()
+
+        label1b = tk.Label(self.root, text="Max Search Size:")
+        label1b.pack()
+        entry1b = tk.Entry(self.root, textvariable=self.max_ss_var, width=50, bg='dark gray')
+        entry1b.pack()
 
         label2 = tk.Label(self.root, text="Population Size:")
         label2.pack()
@@ -623,6 +622,8 @@ class GeneticAlgorithmGUI:
 
     def run_algorithm(self):
         start_time = time.time()
+        min_ss = self.min_ss_var.get()
+        max_ss = self.max_ss_var.get()
         objective_function_var = self.objective_function_var.get()
         if(objective_function_var == "hgbat_function"):
             objective_function = hgbat_function
@@ -643,7 +644,7 @@ class GeneticAlgorithmGUI:
 
         num_selected_as_elite = int(population_size * elite_percentage)
 
-        ga = GeneticAlgorithm(objective_function, num_variables, population_size, num_epochs, 
+        ga = GeneticAlgorithm(min_ss, max_ss, objective_function, num_variables, population_size, num_epochs,
                           crossover_prob, mutation_prob, elite_percentage, num_selected_as_elite, selection_method, crossover_type=crossover_type, precision=precision, mutation_method=mutate)
     
         
@@ -699,5 +700,7 @@ class GeneticAlgorithmGUI:
         self.time_label.config(text=f"Execution Time: {execution_time:.2f} seconds")
 
 if __name__ == "__main__":
+    #func = bf.Keane()
+    #print(func._evaluate([1.3932, 0.    ]))
     gui = GeneticAlgorithmGUI()
     gui.root.mainloop()

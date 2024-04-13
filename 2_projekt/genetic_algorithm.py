@@ -34,7 +34,6 @@ class GeneticAlgorithm:
         self.num_bits = int(np.ceil(np.log2((self.max_ss-self.min_ss)*10**self.precision) + np.log2(1)))
         return np.random.randint(2, size=(self.population_size, self.num_variables, self.num_bits))
 
-#TODO: tutaj chyba
     def binary_to_decimal(self, binary_population, precision):
         if binary_population.ndim == 3:  # Dla całej populacji
             population_size, num_variables, num_bits = binary_population.shape
@@ -45,7 +44,7 @@ class GeneticAlgorithm:
                     decimal_value = 0
                     for j in range(num_bits):
                         decimal_value += binary_population[i][v][j] * (2 ** (num_bits - j - 1))
-                    decimal_population[i][v] = self.min_ss + decimal_value  / (10 ** precision) #TODO:
+                    decimal_population[i][v] = self.min_ss + decimal_value  / (10 ** precision) #TODO: Nie jest zgodne z wzorem, ale działa (prawie) idealnie
         elif binary_population.ndim == 2:  # Dla pojedynczego najlepszego rozwiązania
             num_variables, num_bits = binary_population.shape
             decimal_solution = np.zeros(num_variables)
@@ -54,7 +53,7 @@ class GeneticAlgorithm:
                 decimal_value = 0
                 for j in range(num_bits):
                     decimal_value += binary_population[v][j] * (2 ** (num_bits - j - 1))
-                decimal_solution[v] = self.min_ss + decimal_value  / (10 ** precision)#TODO
+                decimal_solution[v] = self.min_ss + decimal_value  / (10 ** precision)#TODO: Nie jest zgodne z wzorem, ale działa (prawie) idealnie
 
             decimal_population = decimal_solution
         else:

@@ -25,13 +25,21 @@ class adaption_weighted_cross_for_real_numbers:
                 parent_num = parent_num + 1
 
         W = np.zeros((1, parent_num), dtype=float)
+        W_old = np.zeros((1, parent_num), dtype=float)
 
         denominator = 0
         for i in range(0, parent_num):
             denominator = denominator + self.adap_func(parent_tab[i])
 
         for i in range(0, parent_num):
-            W[0][i] = self.adap_func(parent_tab[i]) / float(denominator)
+            W_old[0][i] = self.adap_func(parent_tab[i]) / float(denominator)
+
+        new_denominator = 0
+        for i in range(0, parent_num):
+            new_denominator = new_denominator+1/W_old[0][i]
+
+        for i in range(0, parent_num):
+            W[0][i] = (1/W_old[0][i])/new_denominator
 
         f_desc = np.zeros((1, num_vars), dtype=float)
         for v in range(0, num_vars):

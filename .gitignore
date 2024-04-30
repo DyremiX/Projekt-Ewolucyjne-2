@@ -3,3 +3,10 @@ best_values.txt
 std_dev_values.txt
 decimal_best_solution.txt
 test.ipynb
+
+
+4_projekt/average_values.txt
+4_projekt/best_values.txt
+4_projekt/std_dev_values.txt
+4_projekt/best_solution.txt
+4_projekt/__pycache__

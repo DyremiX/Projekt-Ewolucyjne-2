@@ -74,6 +74,9 @@ class adaption_weighted_cross_for_real_numbers:
         return maxim
 
 
+
+
+
 fwx = adaption_weighted_cross_for_real_numbers(0.0, 100.0, 10, 2)
 print(fwx.pop)
 print(fwx.cross())

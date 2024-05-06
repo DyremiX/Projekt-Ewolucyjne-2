@@ -194,6 +194,63 @@ class GeneticAlgorithm:
 
         return child1, child2
 
+    def fitness_weighted_cross_for_real_numbers(self, pop):
+        num_vars = pop.shape[1]
+        pop_size = pop.shape[0]
+        alfa = random.uniform(0, 1)
+
+        parent_num = 0
+        parent_tab = np.zeros((0, num_vars), dtype=float)
+        for i in range(0, pop_size):
+            beta = (self.objective_function(pop[i]) - self.min_adap_func(pop, pop_size)) / (
+                        self.max_adap_func(pop, pop_size) - self.min_adap_func(pop, pop_size))
+            if beta < alfa:
+                pop_i_reshaped = pop[i].reshape(1, *pop[i].shape)
+                parent_tab = np.vstack([parent_tab, pop_i_reshaped])
+                parent_num = parent_num + 1
+
+        W = np.zeros((1, parent_num), dtype=float)
+        W_old = np.zeros((1, parent_num), dtype=float)
+
+        denominator = 0
+        for i in range(0, parent_num):
+            denominator = denominator + self.objective_function(parent_tab[i])
+
+        for i in range(0, parent_num):
+            W_old[0][i] = self.objective_function(parent_tab[i]) / float(denominator)
+
+        new_denominator = 0
+        for i in range(0, parent_num):
+            new_denominator = new_denominator+1/W_old[0][i]
+
+        for i in range(0, parent_num):
+            W[0][i] = (1/W_old[0][i])/new_denominator
+
+        f_desc = np.zeros((1, num_vars), dtype=float)
+        for v in range(0, num_vars):
+            meter = 0
+            denominator = 0
+            for p in range(0, parent_num):
+                meter = meter + W[0][p]*parent_tab[p][v]
+                denominator = denominator + W[0][p]
+            f_desc[0][v] = meter/denominator
+
+        return f_desc
+
+    def min_adap_func(self, pop, pop_size):
+        minim = self.objective_function(pop[0])
+        for i in range(0, pop_size):
+            if self.objective_function(pop[i]) < minim:
+                minim = self.objective_function(pop[i])
+        return minim
+
+    def max_adap_func(self, pop, pop_size):
+        maxim = self.objective_function(pop[0])
+        for i in range(0, pop_size):
+            if self.objective_function(pop[i]) > maxim:
+                maxim = self.objective_function(pop[i])
+        return maxim
+
     def crossover(self, parents):
         children = []
         for i in range(0, len(parents), 2):
@@ -221,7 +278,10 @@ class GeneticAlgorithm:
                     child2= self.SX_version2(parent1, parent2)
                 elif self.crossover_type  == "f1_PAX":
                     child1, child2 = self.f1_PAX(parent1, parent2)
-                #TODO dodac krzyzowanie Wojtka bo jak na nie patrze to mi słabo
+                #TODO dodac krzyzowanie Wojtka bo jak na nie patrze to mi słabo | W :)
+                elif self.crossover_type == "FWX":
+                    child1 = self.fitness_weighted_cross_for_real_numbers(parents)
+                    child2 = self.fitness_weighted_cross_for_real_numbers(parents)
             else:
                 child1, child2 = parent1, parent2
                 

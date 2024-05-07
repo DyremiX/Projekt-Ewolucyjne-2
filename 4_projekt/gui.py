@@ -3,7 +3,7 @@ from tkinter import ttk
 import numpy as np
 import time as time
 from genetic_algorithm import GeneticAlgorithm
-from objective_functions import keane_function, tst_function, hgbat_function
+from objective_functions import keane_function, tst_function, hgbat_function, schaffer_f2
 import matplotlib.pyplot as plt
 
 class GeneticAlgorithmGUI:
@@ -79,7 +79,7 @@ class GeneticAlgorithmGUI:
         label8.pack()
         dropdown2 = ttk.Combobox(self.root, textvariable=self.crossover_type_var,
                                  values=["arithmetic", "linear", "alpha_mixed", "alpha_beta_mixed", "average", "crossover_HX",
-                                         "SX", "f1_PAX", "adaption weighted"], width=47)
+                                         "SX", "f1_PAX", "FWX"], width=47)
         dropdown2.pack()
 
         label9 = tk.Label(self.root, text="Precision:")
@@ -90,13 +90,13 @@ class GeneticAlgorithmGUI:
         label10 = tk.Label(self.root, text="Mutate Method:")
         label10.pack()
         dropdown3 = ttk.Combobox(self.root, textvariable=self.mutate_type_var,
-                                 values=["uniform", "gaussian"], width=47)
+                                 values=["uniform", "gaussian", "inversion"], width=47)
         dropdown3.pack()
 
         label11 = tk.Label(self.root, text="Objective function:")
         label11.pack()
         dropdown4 = ttk.Combobox(self.root, textvariable=self.objective_function_var,
-                                 values=["keane_function", "hgbat_function", "test"], width=47)
+                                 values=["keane_function", "hgbat_function", "test", "schaffer_f2"], width=47)
         dropdown4.pack()
 
         tk.Label(self.root, text="").pack()
@@ -122,6 +122,8 @@ class GeneticAlgorithmGUI:
         elif(objective_function_var == "keane_function"):
             objective_function = keane_function
         elif (objective_function_var == "test"):
+            objective_function = tst_function
+        elif (objective_function_var == "schaffer_f2"):
             objective_function = tst_function
         num_variables = self.num_variables_var.get()
         population_size = self.population_size_var.get()

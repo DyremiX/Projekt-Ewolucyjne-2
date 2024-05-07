@@ -1,7 +1,7 @@
 import numpy as np
 import random
 import time
-from numpy import sin
+
 from numpy import sqrt
 
 class GeneticAlgorithm:
@@ -95,7 +95,7 @@ class GeneticAlgorithm:
         n = len(parent1)
         child1 = np.empty(n)
         child2 = np.empty(n)
-        self.alpha = random.random() #TODO pomyslec czy w ten sposob czy podawac z innymi parametrami
+        self.alpha = random.random() #TODO pomyslec czy w ten sposob czy podawac z innymi parametrami | W: chyba jest ok w ten sposób
         
         for i in range(n):
             d = parent1[i] - parent2[i]
@@ -114,8 +114,8 @@ class GeneticAlgorithm:
         n = len(parent1)
         child1 = np.empty(n)
         child2 = np.empty(n)
-        self.alpha = random.random() #TODO pomyslec czy w ten sposob czy podawac z innymi parametrami
-        self.beta = random.random() #TODO pomyslec czy w ten sposob czy podawac z innymi parametrami
+        self.alpha = random.random() #TODO pomyslec czy w ten sposob czy podawac z innymi parametrami | chyba jest ok
+        self.beta = random.random() #TODO pomyslec czy w ten sposob czy podawac z innymi parametrami | chyba jest ok
         
         for i in range(n):
             d = parent1[i] - parent2[i]
@@ -137,16 +137,12 @@ class GeneticAlgorithm:
     def average_crossover(self, parent1, parent2):
         child = (parent1 + parent2) / 2
         return child
-    
-    #TODO to jakos?
-    def schaffer_f2(self, x):
-        return 0.5 + ((sin(x[0]**2 + x[1]**2))**2 - 0.5) / ((1 + 0.001*(x[0]**2 + x[1]**2))**2)
 
     def crossover_HX (self, P1, P2):
         C1 = []
         # alpha = random.random()
         alpha = 0.5
-        if self.schaffer_f2(P1) >= self.schaffer_f2(P2):
+        if self.objective_function(P1) >= self.objective_function(P2):
             C1.append(alpha*(P2[0] - P1[0]) + P2[0])
             C1.append(alpha*(P2[1] - P1[1]) + P2[1])
         else:
@@ -194,7 +190,8 @@ class GeneticAlgorithm:
 
         return child1, child2
 
-    def fitness_weighted_cross_for_real_numbers(self, pop):
+    def fitness_weighted_cross_for_real_numbers(self, pop_list):
+        pop = np.array(pop_list)
         num_vars = pop.shape[1]
         pop_size = pop.shape[0]
         alfa = random.uniform(0, 1)
@@ -233,7 +230,11 @@ class GeneticAlgorithm:
             for p in range(0, parent_num):
                 meter = meter + W[0][p]*parent_tab[p][v]
                 denominator = denominator + W[0][p]
-            f_desc[0][v] = meter/denominator
+            #TODO: tu jest potencjalny błąd wynikający z dzielenia przez "0", ale narazie nie wiem co z nim zrobić, więc go chamsko zalepiłem
+            if denominator == 0:
+                f_desc[0][v] = 0
+            else:
+                f_desc[0][v] = meter/denominator
 
         return f_desc
 
@@ -251,11 +252,24 @@ class GeneticAlgorithm:
                 maxim = self.objective_function(pop[i])
         return maxim
 
-    def crossover(self, parents):
+    def max_ff_parent(self, pop):
+        maxim_id = 0
+        maxim = -1
+        # print("len of pop: ", len(pop))
+        for i in range(0, len(pop)):
+            if self.objective_function(pop[i]) > maxim:
+                maxim_id = i
+                maxim = self.objective_function(pop[i])
+        return maxim_id
+
+    def crossover(self, parents, num_elite: int):
+        missing_pop = self.population_size-num_elite
+        children_fwx = np.zeros((0, len(parents[0])))
         children = []
-        for i in range(0, len(parents), 2):
-            parent1 = parents[i]
-            parent2 = parents[i+1]
+        print("parents at begining of loop: ", type(parents))
+        i = 0
+        while len(children) < missing_pop and children_fwx.shape[0] < missing_pop:
+            parent1, parent2 = parents[i], parents[i+1]
             if random.random() < self.crossover_prob:
                 if self.crossover_type == "arithmetic":
                     child1, child2 = self.arithmetic_crossover(parent1, parent2)
@@ -280,13 +294,29 @@ class GeneticAlgorithm:
                     child1, child2 = self.f1_PAX(parent1, parent2)
                 #TODO dodac krzyzowanie Wojtka bo jak na nie patrze to mi słabo | W :)
                 elif self.crossover_type == "FWX":
-                    child1 = self.fitness_weighted_cross_for_real_numbers(parents)
-                    child2 = self.fitness_weighted_cross_for_real_numbers(parents)
+                    children_fwx = np.concatenate((children_fwx, self.fitness_weighted_cross_for_real_numbers(parents)), axis=0)
             else:
                 child1, child2 = parent1, parent2
-                
-            children.append(child1)
-            children.append(child2)
+
+            if self.crossover_type != "FWX":
+                children.append(child1)
+                children.append(child2)
+
+            if self.crossover_type == "FWX":
+                children_fwx_list = children_fwx.tolist()
+                for _ in range(0, len(children_fwx_list)):
+                    idx_to_delete = self.max_ff_parent(parents)
+                    parents = np.delete(parents, idx_to_delete, axis=0)
+                #TODO: ten if pod spodem to jest abominacja, ale inaczej typowanie sie wali
+                if type(parents) == np.ndarray:
+                    #print("parents: ", type(parents))
+                    parents_list = parents.tolist()
+                else:
+                    parents_list = parents
+                #print("parents_list: ", type(parents_list))
+                parents_list.extend(children_fwx_list)
+                children = parents_list
+
 
             if len(parents) % 2 != 0:
                 children.append(parents[-1])
@@ -320,6 +350,8 @@ class GeneticAlgorithm:
                 mutated_individual = self.uniform_mutation(individual)
             elif self.mutation_method == "gaussian":
                 mutated_individual = self.gaussian_mutation(individual)
+            elif self.mutation_method == "inversion":
+                mutated_individual = self.inversion()
             mutated_population.append(mutated_individual)
         return np.array(mutated_population)
 
@@ -333,16 +365,15 @@ class GeneticAlgorithm:
         return elite_population
 
     def inversion(self, population):
-        inversed_population = population.copy()
-        for i in range(len(inversed_population)):
+        inversed_population = np.copy(population)
+        for i in range(inversed_population.shape[0]):
             if random.random() < self.mutation_prob:
-                mutation_point = random.randint(0, len(inversed_population[i]) - 1)
-                selected_bit = random.randint(0, self.num_bits - 1)
-                selected_bit2 = random.randint(selected_bit, self.num_bits - 1)
-                inversed_population[i][mutation_point][selected_bit:selected_bit2+1] = np.flip(inversed_population[i][mutation_point][selected_bit:selected_bit2+1])
+                start_index = np.random.randint(population.shape[1])
+                end_index = np.random.randint(start_index, population.shape[1])
+                inversed_population[i, start_index:end_index+1] = np.flip(inversed_population[i, start_index:end_index+1])
         return inversed_population
 
-    #TODO zmienic strategie ewolucyjna na jakąś z jego wykładu jeśli trzeba?
+    #TODO zmienic strategie ewolucyjna na jakąś z jego wykładu jeśli trzeba? | chyba nie trzeba, bo to zupełnie inna zabawa niekorzystająca z naszych crossover'ów (o ile dobrze rozumiem)
     def evolve(self):
         best_values = []
         best_solutions = []
@@ -366,12 +397,10 @@ class GeneticAlgorithm:
             elite_population = self.elitism(self.population, fitness_values)
 
             parents = self.select_parents(fitness_values)
-            children = self.crossover(parents)
+            children = self.crossover(parents, elite_population.shape[0])
             mutated_children = self.mutate(children)
-            #TODO inwersja jesli trzeba
-            #inversed_population = self.inversion(mutated_children)
+            #TODO inwersja jesli trzeba | można mu dać, ale inversja to chyba typ mutacji, więc damy do wyboru w GUI
 
-            #new_population = np.vstack((elite_population, inversed_population))
             new_population = np.vstack((elite_population, mutated_children))
             self.population = new_population
 

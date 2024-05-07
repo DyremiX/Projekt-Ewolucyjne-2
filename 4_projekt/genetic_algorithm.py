@@ -139,15 +139,15 @@ class GeneticAlgorithm:
         return child
 
     def crossover_HX (self, P1, P2):
-        C1 = []
-        # alpha = random.random()
-        alpha = 0.5
+        alpha = random.random()
         if self.objective_function(P1) >= self.objective_function(P2):
-            C1.append(alpha*(P2[0] - P1[0]) + P2[0])
-            C1.append(alpha*(P2[1] - P1[1]) + P2[1])
+            # C1.append(alpha*(P2[0] - P1[0]) + P2[0])
+            # C1.append(alpha*(P2[1] - P1[1]) + P2[1])
+            C1 = [alpha*(p2 - p1) + p2 for p1,p2 in zip(P1,P2)]
         else:
-            C1.append(alpha*(P1[0] - P2[0]) + P1[0])
-            C1.append(alpha*(P1[1] - P2[1]) + P1[1])
+            # C1.append(alpha*(P1[0] - P2[0]) + P1[0])
+            # C1.append(alpha*(P1[1] - P2[1]) + P1[1])
+            C1 = [alpha*(p1 - p2) + p1 for p1,p2 in zip(P1,P2)]
         return C1
     
     def SX_version1(self, parent1, parent2):

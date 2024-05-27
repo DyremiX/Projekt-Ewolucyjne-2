@@ -570,5 +570,3 @@ class CustomGA_real(pygad.GA):
         
     def evaluate_subject(self, subject):
         return sum(subject)
-        
-    #TODO mutacja Gaussa

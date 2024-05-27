@@ -22,7 +22,7 @@ class GeneticAlgorithmGUI:
         self.elite_percentage_var = tk.DoubleVar(value=0.6)
         self.selection_method_var = tk.StringVar(value="tournament")
         self.crossover_type_var = tk.StringVar(value="arithmetic")
-        self.precision_var = tk.IntVar(value=4) #TODO chyba mozna wywalic??
+        self.precision_var = tk.IntVar(value=4)
         self.mutate_type_var = tk.StringVar(value="uniform")
         self.objective_function_var = tk.StringVar(value="keane_function")
 

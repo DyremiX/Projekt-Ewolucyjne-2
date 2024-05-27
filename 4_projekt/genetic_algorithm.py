@@ -199,8 +199,11 @@ class GeneticAlgorithm:
         parent_num = 0
         parent_tab = np.zeros((0, num_vars), dtype=float)
         for i in range(0, pop_size):
-            beta = (self.objective_function(pop[i]) - self.min_adap_func(pop, pop_size)) / (
-                        self.max_adap_func(pop, pop_size) - self.min_adap_func(pop, pop_size))
+            if self.max_adap_func(pop, pop_size) - self.min_adap_func(pop, pop_size) == 0:
+                beta = 0
+            else:
+                beta = (self.objective_function(pop[i]) - self.min_adap_func(pop, pop_size)) / (
+                            self.max_adap_func(pop, pop_size) - self.min_adap_func(pop, pop_size))
             if beta < alfa:
                 pop_i_reshaped = pop[i].reshape(1, *pop[i].shape)
                 parent_tab = np.vstack([parent_tab, pop_i_reshaped])
@@ -266,7 +269,6 @@ class GeneticAlgorithm:
         missing_pop = self.population_size-num_elite
         children_fwx = np.zeros((0, len(parents[0])))
         children = []
-        print("parents at begining of loop: ", type(parents))
         i = 0
         while len(children) < missing_pop and children_fwx.shape[0] < missing_pop:
             parent1, parent2 = parents[i], parents[i+1]

@@ -5,6 +5,7 @@ import numpy
 import benchmark_functions as bf
 from benchmark_functions import Keane
 from opfunu.utils.operator import hgbat_func
+from opfunu import cec_based
 import numpy as np
 from CustomGA import CustomGA_binary
 from CustomGA import CustomGA_real
@@ -108,6 +109,17 @@ def decodeInd(individual, num_parts):
 
         #decoded_values.append(value)
     return decoded_values
+
+#Test dla Keane'a
+func_1_test = bf.Keane(n_dimensions=2)
+print("Keane suggested bounds: ", func_1_test.suggested_bounds())
+print("Keane minimum: ", func_1_test.minimum())
+
+#Test dla HGBat'a
+func_2_test = cec_based.cec2014.F142014(ndim=2)
+print("Keane suggested bounds: ", func_2_test.bounds())
+print("Keane x_global: ", func_2_test.x_global())
+print("Keane f_global: ", func_2_test.f_global())
 
 #Właściwy algorytm genetyczny
 #pygad.GA - oryginalne

@@ -51,10 +51,19 @@ parent_selection_type = "tournament" #tournament, rws (ruletka), random
 #binarne: uniform, single_point, two_points, three_point, grainy, RRC, crossover_by_dominance, DIS, adaption_weighted_cross
 #rzeczywiste: arithmetic, linear, alpha_mixed, alpha_beta_mixed, average, crossover_HX, SX_version1, SX_version2, f1_PAX, fitness_weighted_cross_for_real_numbers
 crossover_type = "single_point"
+def gaussian_mutation(sigma=0.1, mutation_probability=0.1):
+    def mutate(offspring, ga_instance):
+        for idx in range(offspring.shape[0]):
+            for gene_idx in range(offspring[idx].shape[0]):
+                if np.random.rand() < mutation_probability:
+                    offspring[idx][gene_idx] += np.random.normal(loc=0.0, scale=sigma)
+        return offspring
+    return mutate
 
 #random, swap
 #rzeczywste: gauss
-mutation_type = "random" 
+# mutation_type = gaussian_mutation(sigma=0.1, mutation_probability=0.1)
+mutation_type = "random"
 
 #Konfiguracja logowania
 

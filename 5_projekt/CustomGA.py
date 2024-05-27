@@ -159,7 +159,81 @@ class CustomGA_binary(pygad.GA):
             offspring[k] = np.array(new_ind)
         return offspring
     
-    #TODO krzyzowanie Wojtka (:
+    #TODO krzyzowanie Wojtka (: | W: :)
+    def adaption_weighted_cross(self, pop, offspring_size):
+        n = pop.shape[2]
+        num_vars = pop.shape[1]
+        pop_size = pop.shape[0]
+        offspring_array = []
+        for _ in range(offspring_size):
+            alfa = random.uniform(0, 1)
+
+            parent_num = 0
+            parent_tab = np.zeros((0, num_vars, n), dtype=int)
+            for i in range(0, pop_size):
+                beta = (self.adap_func(pop[i]) - self.min_adap_func(pop, pop_size))/(self.max_adap_func(pop, pop_size) - self.min_adap_func(pop, pop_size))
+                if beta < alfa:
+                    pop_i_reshaped = pop[i].reshape(1, *pop[i].shape)
+                    parent_tab = np.vstack([parent_tab, pop_i_reshaped])
+                    parent_num = parent_num + 1
+
+            W = np.zeros((1, parent_num), dtype=float)
+
+            denominator = 0
+            for i in range(0, parent_num):
+                denominator = denominator + self.adap_func(parent_tab[i])
+
+            for i in range(0, parent_num):
+                W[0][i] = self.adap_func(parent_tab[i])/float(denominator)
+
+            tab = np.zeros((parent_num, num_vars, n), dtype=int)
+            for j in range(0, parent_num):
+                for v in range(0, num_vars):
+                    for i in range(0, n):
+                        if parent_tab[j][v][i] == 1:
+                            tab[j][v][i] = 1
+                        else:
+                            tab[j][v][i] = -1
+
+            f_desc = np.zeros((1, num_vars, n), dtype=int)
+            for v in range(0, num_vars):
+                for i in range(0, n):
+                    lambd = self.calc_sign(W, tab, v, i, parent_num)
+                    if lambd >= 0:
+                        f_desc[0][v][i] = 1
+                    else:
+                        f_desc[0][v][i] = 0
+
+            offspring_array = np.append(offspring_array, f_desc, axis=0)
+        return offspring_array
+
+    def calc_sign(self, W, tab, var_num, gen_num, parent_num):
+        calc = 0
+        for j in range(0, parent_num):
+            calc = calc+W[0][j]*tab[j][var_num][gen_num]
+        if calc >= 0:
+            return 1
+        else:
+            return -1
+
+    def adap_func(self, single_element):
+        #print("SES: ", single_element.shape)
+        val = self.binary_to_decimal(single_element, self.precision)
+        return self.objective_function(val)
+
+    def min_adap_func(self, pop, pop_size):
+        minim = self.adap_func(pop[0])
+        for i in range(0, pop_size):
+            if self.adap_func(pop[i]) < minim:
+                minim = self.adap_func(pop[i])
+        return minim
+
+    def max_adap_func(self, pop, pop_size):
+        maxim = self.adap_func(pop[0])
+        for i in range(0, pop_size):
+            if self.adap_func(pop[i]) > maxim:
+                maxim = self.adap_func(pop[i])
+        return maxim
 
     def crossover(self, parents, offspring_size):
         if self.original_crossover_type == "three_point":
@@ -172,8 +246,8 @@ class CustomGA_binary(pygad.GA):
             return self.crossover_by_dominance(parents, offspring_size)
         elif self.original_crossover_type == "DIS":
             return self.DIS(parents, offspring_size)
-        # elif self.original_crossover_type == "adaption_weighted_cross":
-        #     return self.adaption_weighted_cross(parents, offspring_size)
+        elif self.original_crossover_type == "adaption_weighted_cross":
+            return self.adaption_weighted_cross(parents, offspring_size)
         else:
             return super().crossover(parents, offspring_size)
 
@@ -387,7 +461,87 @@ class CustomGA_real(pygad.GA):
             
         return offspring
 
-    #TODO krzyzowanie Wojtka (:
+    #TODO krzyzowanie Wojtka (: | W: :)
+    def fitness_weighted_cross_for_real_numbers(self, pop_list, offspring_size):
+        pop = np.array(pop_list)
+        num_vars = pop.shape[1]
+        pop_size = pop.shape[0]
+        offspring_array = []
+
+        for _ in range(offspring_size):
+            alfa = random.uniform(0, 1)
+
+            parent_num = 0
+            parent_tab = np.zeros((0, num_vars), dtype=float)
+            for i in range(0, pop_size):
+                if self.max_adap_func(pop, pop_size) - self.min_adap_func(pop, pop_size) == 0:
+                    beta = 0
+                else:
+                    beta = (self.objective_function(pop[i]) - self.min_adap_func(pop, pop_size)) / (
+                                self.max_adap_func(pop, pop_size) - self.min_adap_func(pop, pop_size))
+                if beta < alfa:
+                    pop_i_reshaped = pop[i].reshape(1, *pop[i].shape)
+                    parent_tab = np.vstack([parent_tab, pop_i_reshaped])
+                    parent_num = parent_num + 1
+
+            W = np.zeros((1, parent_num), dtype=float)
+            W_old = np.zeros((1, parent_num), dtype=float)
+
+            denominator = 0
+            for i in range(0, parent_num):
+                denominator = denominator + self.objective_function(parent_tab[i])
+
+            for i in range(0, parent_num):
+                W_old[0][i] = self.objective_function(parent_tab[i]) / float(denominator)
+
+            new_denominator = 0
+            for i in range(0, parent_num):
+                new_denominator = new_denominator+1/W_old[0][i]
+
+            for i in range(0, parent_num):
+                W[0][i] = (1/W_old[0][i])/new_denominator
+
+            f_desc = np.zeros((1, num_vars), dtype=float)
+            for v in range(0, num_vars):
+                meter = 0
+                denominator = 0
+                for p in range(0, parent_num):
+                    meter = meter + W[0][p]*parent_tab[p][v]
+                    denominator = denominator + W[0][p]
+                #TODO: potencjalny błąd wynikający z dzielenia przez "0"
+                if denominator == 0:
+                    f_desc[0][v] = 0
+                else:
+                    f_desc[0][v] = meter/denominator
+
+            offspring_array = np.append(offspring_array, f_desc, axis=0)
+
+        return offspring_array
+
+    def min_adap_func(self, pop, pop_size):
+        minim = self.objective_function(pop[0])
+        for i in range(0, pop_size):
+            if self.objective_function(pop[i]) < minim:
+                minim = self.objective_function(pop[i])
+        return minim
+
+    def max_adap_func(self, pop, pop_size):
+        maxim = self.objective_function(pop[0])
+        for i in range(0, pop_size):
+            if self.objective_function(pop[i]) > maxim:
+                maxim = self.objective_function(pop[i])
+        return maxim
+
+    def max_ff_parent(self, pop):
+        maxim_id = 0
+        maxim = -1
+        # print("len of pop: ", len(pop))
+        for i in range(0, len(pop)):
+            if self.objective_function(pop[i]) > maxim:
+                maxim_id = i
+                maxim = self.objective_function(pop[i])
+        return maxim_id
+
 
     def crossover(self, parents, offspring_size):
         if self.original_crossover_type  == "arithmetic":
@@ -409,8 +563,8 @@ class CustomGA_real(pygad.GA):
             return self.SX_version2(parents, offspring_size)
         elif self.original_crossover_type  == "f1_PAX":
             return self.f1_PAX(parents, offspring_size)
-        # elif self.crossover_type == "fitness_weighted_cross_for_real_numbers":
-        #     return self.fitness_weighted_cross_for_real_numbers(parents, offspring_size)
+        elif self.crossover_type == "fitness_weighted_cross_for_real_numbers":
+            return self.fitness_weighted_cross_for_real_numbers(parents, offspring_size)
         else:
             return super().crossover(parents, offspring_size)
         

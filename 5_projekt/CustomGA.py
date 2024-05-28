@@ -21,7 +21,6 @@ class CustomGA_binary(pygad.GA):
                                                                    supported_crossover_types=", ".join(
                                                                        supported_crossover_types)))
 
-        #nie jestem pewna czy to dziala ale inne proby nie dzialaly na 100% XD
         self.original_crossover_type = crossover_type
 
         if crossover_type not in ["single_point", "two_points", "uniform", "scattered"]:
@@ -159,7 +158,6 @@ class CustomGA_binary(pygad.GA):
             offspring[k] = np.array(new_ind)
         return offspring
     
-    #TODO krzyzowanie Wojtka (: | W: :)
     def adaption_weighted_cross(self, pop, offspring_size):
         n = pop.shape[2]
         num_vars = pop.shape[1]
@@ -461,7 +459,6 @@ class CustomGA_real(pygad.GA):
             
         return offspring
 
-    #TODO krzyzowanie Wojtka (: | W: :)
     def fitness_weighted_cross_for_real_numbers(self, pop_list, offspring_size):
         pop = np.array(pop_list)
         num_vars = pop.shape[1]
@@ -545,7 +542,6 @@ class CustomGA_real(pygad.GA):
 
     def crossover(self, parents, offspring_size):
         if self.original_crossover_type  == "arithmetic":
-            print("jestem tu")
             return self.arithmetic_crossover(parents, offspring_size)
         elif self.original_crossover_type  == "linear":
             return self.linear_crossover(parents, offspring_size)

@@ -40,7 +40,7 @@ gene_type = int
 # init_range_high = boundary[1]
 # gene_type = float
 
-# dla rzeczywistej - hgbat?(todo czy da sie wyciagnac boundary?) i test
+# dla rzeczywistej - hgbat
 # init_range_low = -10
 # init_range_high = 10
 # gene_type = float
@@ -110,7 +110,7 @@ def decodeInd(individual, num_parts):
         
         value = int(binary_part, 2)
         
-        #normalizacja do jakiegos zakresu, np [0, 10] ale nie wiem czy trzeba?
+        #normalizacja do jakiegos zakresu, np [0, 10]
         max_value = 2**part_length - 1
         normalized_value = value / max_value * 10
         
@@ -126,9 +126,9 @@ print("Keane minimum: ", func_1_test.minimum())
 
 #Test dla HGBat'a
 func_2_test = cec_based.cec2014.F142014(ndim=2)
-print("Keane suggested bounds: ", func_2_test.bounds())
-print("Keane x_global: ", func_2_test.x_global())
-print("Keane f_global: ", func_2_test.f_global())
+# print("Keane suggested bounds: ", func_2_test.bounds())
+# print("Keane x_global: ", func_2_test.x_global())
+# print("Keane f_global: ", func_2_test.f_global())
 
 #Właściwy algorytm genetyczny
 #pygad.GA - oryginalne
